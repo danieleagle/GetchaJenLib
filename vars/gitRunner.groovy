@@ -205,6 +205,41 @@ String getFileContents(final String gitServerUrl, final Map gitServerCredentials
 }
 
 /**
+ * Gets the merge request author information using the GitLab REST API.
+ * @param gitServerUrl The URL of the Git server.
+ * @param gitServerCredentials The Git server credentials. Keys and values should be Strings. Valid keys are
+ *                             gitServerCredentialsId and gitServerApiTokenCredId.
+ * @param userInfo The Git user information. Keys and values should be Strings. Valid keys are userFullName and
+ *                 userEmailAddress.
+ * @param gitMergeReqApiUrl The merge request API URL specific to the current repository
+ *                          (e.g. https://gitlab-server.example.com/api/v4/projects/45/merge_requests). In this example,
+ *                          45 is the repo ID.
+ * @param mergeReqId The merge request author information.
+ * @return The merge request commit messages as a list.
+ * @throws IllegalArgumentException when passing an empty or null argument.
+ */
+String getMergeReqAuthorInfo(final String gitServerUrl, final Map gitServerCredentials, final Map userInfo,
+                             final String gitMergeReqApiUrl, final String mergeReqId) throws IllegalArgumentException {
+  Map mergeReqAuthorInfo = [:]
+
+  if (gitServerUrl && gitServerCredentials && gitServerCredentials.get("gitServerCredentialsId")
+      && gitServerCredentials.get("gitServerCredentialsId") instanceof String
+      && gitServerCredentials.get("gitServerApiTokenCredId")
+      && gitServerCredentials.get("gitServerApiTokenCredId") instanceof String
+      && userInfo && userInfo.get("userFullName") && userInfo.get("userFullName") instanceof String
+      && userInfo.get("userEmailAddress") && userInfo.get("userEmailAddress") instanceof String
+      && gitMergeReqApiUrl && mergeReqId && mergeReqId.isNumber()) {
+    mergeReqAuthorInfo = new GitManager(this, gitServerUrl, gitServerCredentials, userInfo)
+      .getMergeReqAuthorInfo(gitMergeReqApiUrl, mergeReqId)
+  } else {
+    throw new IllegalArgumentException("The argument passed to the gitRunner.getMergeReqAuthorInfo step is invalid. It " +
+      "could be empty or null.") as Throwable
+  }
+
+  return mergeReqAuthorInfo
+}
+
+/**
  * Gets the commit messages belonging to the merge request using the GitLab REST API.
  * @param gitServerUrl The URL of the Git server.
  * @param gitServerCredentials The Git server credentials. Keys and values should be Strings. Valid keys are

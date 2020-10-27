@@ -1,7 +1,7 @@
 #!/usr/bin/groovy
 
 package com.danieleagle.GetchaJenLib.components
-
+import com.danieleagle.GetchaJenLib.exceptions.JobDataException
 import com.danieleagle.GetchaJenLib.exceptions.ShellCmdFailureException
 import groovy.json.JsonSlurperClassic
 import java.util.regex.Pattern
@@ -309,6 +309,55 @@ class GitManager implements Serializable {
   }
 
   /**
+   * Gets the merge request author information using the GitLab REST API.
+   * @param gitMergeReqApiUrl The merge request API URL specific to the current repository
+   *                          (e.g. https://gitlab-server.example.com/api/v4/projects/45/merge_requests). In this example,
+   *                          45 is the repo ID.
+   * @param mergeReqId The merge request ID.
+   * @return The merge request author information.
+   * @throws IllegalArgumentException when passing an empty or null argument.
+   * @throws JobDataException when the specified merge request couldn't be found.
+   */
+  Map getMergeReqAuthorInfo(final String gitMergeReqApiUrl, final String mergeReqId)
+      throws IllegalArgumentException, JobDataException {
+    Map mergeReqAuthorInfo = [:]
+
+    if (gitMergeReqApiUrl && mergeReqId && mergeReqId.isNumber()) {
+      steps.withCredentials([steps.string(credentialsId: gitServerApiTokenCredId, variable: "apiToken")]) {
+        String jsonResult = ""
+
+        try {
+          jsonResult = steps.sh(script: "curl --output /dev/stdout --request GET --header 'PRIVATE-TOKEN: ${steps.apiToken}' " +
+            "${gitMergeReqApiUrl}/${mergeReqId}", returnStdout: true).trim()
+          Map mergeRequest = (jsonResult) ? new JsonSlurperClassic().parseText(jsonResult) : null
+
+          if (mergeRequest.get("author") && mergeRequest.get("author").get("name") && mergeRequest.get("author").get("username")
+              && mergeRequest.get("author").get("state")) {
+            mergeReqAuthorInfo.put("name", mergeRequest.get("author").get("name"))
+            mergeReqAuthorInfo.put("username", mergeRequest.get("author").get("username"))
+            mergeReqAuthorInfo.put("state", mergeRequest.get("author").get("state"))
+          }
+        } catch (Exception exception) {
+          steps.error("An exception was thrown which has caused this job instance to fail. Please see below for the " +
+            "details.\n\n" + exception.getMessage())
+        }
+
+        if (jsonResult.contains("{\"message\":\"404 Project Not Found\"}")) {
+          throw new JobDataException("Unable to retrieve merge request details for ID ${mergeReqId} as it " +
+            "doesn't exist.") as Throwable
+        } else {
+          steps.echo "Successfully retrieved merge request details for ID ${mergeReqId} using the GitLab v4 API."
+        }
+      }
+    } else {
+      throw new IllegalArgumentException("The argument passed to the GitManager getMergeReqAuthorInfo method is invalid. " +
+        "It could be empty or null.") as Throwable
+    }
+
+    return mergeReqAuthorInfo
+  }
+
+  /**
    * Gets the commit messages belonging to the merge request using the GitLab REST API.
    * @param gitMergeReqApiUrl The merge request API URL specific to the current repository
    *                          (e.g. https://gitlab-server.example.com/api/v4/projects/45/merge_requests). In this example,
@@ -316,10 +365,10 @@ class GitManager implements Serializable {
    * @param mergeReqId The merge request ID.
    * @return The merge request commit messages as a list.
    * @throws IllegalArgumentException when passing an empty or null argument.
-   * @throws FileNotFoundException when the specified merge request couldn't be found.
+   * @throws JobDataException when the specified merge request couldn't be found.
    */
   String getMergeReqCommitMsgs(final String gitMergeReqApiUrl, final String mergeReqId)
-      throws IllegalArgumentException, FileNotFoundException {
+      throws IllegalArgumentException, JobDataException {
     List mergeReqCommitMsgs = []
 
     if (gitMergeReqApiUrl && mergeReqId && mergeReqId.isNumber()) {
@@ -339,8 +388,8 @@ class GitManager implements Serializable {
             "details.\n\n" + exception.getMessage())
         }
 
-        if (jsonResult.contains("{\"message\":\"404 File Not Found\"}")) {
-          throw new FileNotFoundException("Unable to retrieve merge request commit messages for ID ${mergeReqId} as it " +
+        if (jsonResult.contains("{\"message\":\"404 Project Not Found\"}")) {
+          throw new JobDataException("Unable to retrieve merge request commit messages for ID ${mergeReqId} as it " +
             "doesn't exist.") as Throwable
         } else {
           steps.echo "Successfully retrieved merge request commit messages for ID ${mergeReqId} using the GitLab v4 API."

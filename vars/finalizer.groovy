@@ -8,16 +8,13 @@ import com.danieleagle.GetchaJenLib.exceptions.JobDataException
 
 /**
  * Finalizes the job instance based upon the defined globals. Requires the following globals:
- * EMAIL_NOTIFICATION_RECIPIENTS, EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES, SONARQUBE_EXTERNAL_PROJECT_URL,
- * JENKINS_PARENT_WORKSPACE_CONTAINER_PATH, JENKINS_CHILD_WORKSPACE_CONTAINER_PATH, and
+ * SONARQUBE_EXTERNAL_PROJECT_URL, JENKINS_PARENT_WORKSPACE_CONTAINER_PATH, JENKINS_CHILD_WORKSPACE_CONTAINER_PATH, and
  * JENKINS_JOB_INSTANCE_COLLECTION_FOLDER. The following variable is optional: EMAIL_FILE_ATTACHMENT_PATTERN.
  * @throws JobDataException when missing the required globals.
  */
 void invoke() throws JobDataException {
   try {
-    if (GlobalsManager.instance.get("EMAIL_NOTIFICATION_RECIPIENTS")
-        && GlobalsManager.instance.get("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES")
-        && GlobalsManager.instance.get("SONARQUBE_EXTERNAL_PROJECT_URL")
+    if (GlobalsManager.instance.get("SONARQUBE_EXTERNAL_PROJECT_URL")
         && GlobalsManager.instance.get("JENKINS_PARENT_WORKSPACE_CONTAINER_PATH")
         && GlobalsManager.instance.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH")
         && GlobalsManager.instance.get("JENKINS_JOB_INSTANCE_COLLECTION_FOLDER")
@@ -57,13 +54,18 @@ void invoke() throws JobDataException {
           }
         }
 
-        new NotificationSystem(this).send(
-          NotificationSystem.NotificationType.SUCCESS,
-          GlobalsManager.instance.get("EMAIL_NOTIFICATION_RECIPIENTS"),
-          GlobalsManager.instance.get("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES"),
-          emailFileAttachmentPattern,
-          GlobalsManager.instance.get("SONARQUBE_EXTERNAL_PROJECT_URL")
-        )
+        if (GlobalsManager.instance.get("EMAIL_NOTIFICATION_RECIPIENTS")
+            && GlobalsManager.instance.get("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES")) {
+          new NotificationSystem(this).send(
+            NotificationSystem.NotificationType.SUCCESS,
+            GlobalsManager.instance.get("EMAIL_NOTIFICATION_RECIPIENTS"),
+            GlobalsManager.instance.get("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES"),
+            emailFileAttachmentPattern,
+            GlobalsManager.instance.get("SONARQUBE_EXTERNAL_PROJECT_URL")
+          )
+        } else {
+          echo "Skipped sending success notification email since no recipients or reply-to options were specified."
+        }
       } else {
         updateGitlabCommitStatus(name: "build", state: "failed")
 
@@ -84,20 +86,24 @@ void invoke() throws JobDataException {
           }
         }
 
-        new NotificationSystem(this).send(
-          NotificationSystem.NotificationType.FAILURE,
-          GlobalsManager.instance.get("EMAIL_NOTIFICATION_RECIPIENTS"),
-          GlobalsManager.instance.get("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES"),
-          emailFileAttachmentPattern,
-          GlobalsManager.instance.get("SONARQUBE_EXTERNAL_PROJECT_URL")
-        )
+        if (GlobalsManager.instance.get("EMAIL_NOTIFICATION_RECIPIENTS")
+            && GlobalsManager.instance.get("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES")) {
+          new NotificationSystem(this).send(
+            NotificationSystem.NotificationType.FAILURE,
+            GlobalsManager.instance.get("EMAIL_NOTIFICATION_RECIPIENTS"),
+            GlobalsManager.instance.get("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES"),
+            emailFileAttachmentPattern,
+            GlobalsManager.instance.get("SONARQUBE_EXTERNAL_PROJECT_URL")
+          )
+        } else {
+          echo "Skipped sending failure notification email since no recipients or reply-to options were specified."
+        }
 
         throw new Exception("Jenkins job failure has been detected.") as Throwable
       }
     } else {
       throw new JobDataException("Unable to execute the finalizer.invoke step due to missing globals. This step requires " +
-        "the following globals: EMAIL_NOTIFICATION_RECIPIENTS, EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES, " +
-        "SONARQUBE_EXTERNAL_PROJECT_URL, JENKINS_PARENT_WORKSPACE_CONTAINER_PATH, " +
+        "the following globals: SONARQUBE_EXTERNAL_PROJECT_URL, JENKINS_PARENT_WORKSPACE_CONTAINER_PATH, " +
         "JENKINS_CHILD_WORKSPACE_CONTAINER_PATH, and JENKINS_JOB_INSTANCE_COLLECTION_FOLDER.") as Throwable
     }
   } catch (Exception exception) {

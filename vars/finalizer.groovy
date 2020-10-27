@@ -102,6 +102,6 @@ void invoke() throws JobDataException {
     }
   } catch (Exception exception) {
     updateGitlabCommitStatus(name: "build", state: "failed")
-    error("An exception was thrown inside the finalizer.invoke step  which has caused this job instance to fail.")
+    error("An exception was thrown inside the finalizer.invoke step which has caused this job instance to fail.")
   }
 }

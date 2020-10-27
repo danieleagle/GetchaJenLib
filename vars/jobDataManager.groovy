@@ -203,11 +203,13 @@ List getStagesToSkip(final List skippableStages, final String mergeRequestCommen
     List discoveredStages = unfilteredStages.split(",")
 
     discoveredStages.each {
-      if (skippableStages.contains(it)) {
-        echo "The requested stage to skip is on the skippable stages list. Continuing..."
-        stagesToSkip.add(it.trim())
+      String stageToSkip = it.trim()
+
+      if (skippableStages.contains(stageToSkip)) {
+        echo "The requested stage [${stageToSkip}] to skip is on the skippable stages list. Continuing..."
+        stagesToSkip.add(stageToSkip)
       } else {
-        echo "The requested stage to skip isn't on the skippable stages list. Ignoring..."
+        echo "The requested stage [${stageToSkip}] to skip isn't on the skippable stages list. Ignoring..."
       }
     }
 

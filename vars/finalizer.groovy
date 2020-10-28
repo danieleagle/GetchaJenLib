@@ -42,12 +42,20 @@ void invoke() throws JobDataException {
           if (env.gitlabSourceBranch && env.gitlabTargetBranch
               && GitManager.isValidRef(env.gitlabSourceBranch.toString(), GlobalsManager.instance.get("PRODUCTION_BRANCH_REGEX"))
               && GitManager.isValidRef(env.gitlabTargetBranch.toString(), GlobalsManager.instance.get("DEVELOPMENT_BRANCH_REGEX"))) {
+            echo "Automatically accepting the merge request since the source branch is production and the target branch is " +
+              "development."
             acceptGitLabMR(useMRDescription: true, removeSourceBranch: true) // accept MR after sending success to GitLab
-                                                                             // or 405 error will occur
+                                                                              // or 405 error will occur
             echo "Unlocking merge request target branches since the job was successful and the source branch is production and " +
               "the target branch is development..."
             merReqAuthorizer.unlockTargetBranches(GlobalsManager.instance.get("MR_LOCKED_BRANCHES_JENKINS_CONTAINER_PATH"),
               GlobalsManager.instance.get("MR_LOCKED_BRANCHES_FILE_NAME"), GlobalsManager.instance.get("VALID_BRANCHES"))
+          } else if (env.gitlabSourceBranch && env.gitlabTargetBranch
+              && GitManager.isValidRef(env.gitlabSourceBranch.toString(), GlobalsManager.instance.get("DEVELOPMENT_BRANCH_REGEX"))
+              && GitManager.isValidRef(env.gitlabTargetBranch.toString(), GlobalsManager.instance.get("TEST_BRANCH_REGEX"))) {
+            echo "Automatically accepting the merge request since the source branch is development and the target branch is " +
+              "test."
+            acceptGitLabMR(useMRDescription: true, removeSourceBranch: true)
           } else {
             echo "Skipped unlocking merge request target branches since the source branch isn't production and " +
               "the target branch isn't development."

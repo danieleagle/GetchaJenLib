@@ -32,46 +32,48 @@ class SonarQubeAgent implements Serializable {
   }
 
   /**
-   * Retrieves the SonarQube task URL used to get the quality gate status.
+   * Retrieves the SonarQube task ID used to get the quality gate status.
    * @param currentJobInstWorkspacePath The workspace path where the current job instance data is stored.
    * @return The SonarQube task URL.
    * @throws IllegalArgumentException when passing an empty or null argument.
    * @throws InvalidDirOrFileNameException when the specified directory contains invalid characters.
    */
-  String getTaskUrl(final String currentJobInstWorkspacePath) throws IllegalArgumentException, InvalidDirOrFileNameException {
-    String sonarQubeTaskUrl = ""
+  String getTaskId(final String currentJobInstWorkspacePath) throws IllegalArgumentException, InvalidDirOrFileNameException {
+    String sonarQubeTaskId = ""
 
     if (currentJobInstWorkspacePath) {
       FileSystemHandler fileSystemHandler = new FileSystemHandler(steps)
 
       if (new FileSystemHandler(steps).isValidDirectoryName(currentJobInstWorkspacePath)) {
-        sonarQubeTaskUrl = fileSystemHandler.readFileAsString("${currentJobInstWorkspacePath}/target/sonar",
-          "report-task.txt", "ceTaskUrl").substring(10) // use substring() method to remove ceTaskUrl= from string
+        sonarQubeTaskId = fileSystemHandler.readFileAsString("${currentJobInstWorkspacePath}/target/sonar",
+          "report-task.txt", "ceTaskId").substring(9) // use substring() method to remove ceTaskId= from string
       } else {
         throw new InvalidDirOrFileNameException("The current job instance workspace path contains invalid characters.") as Throwable
       }
     } else {
-      throw new IllegalArgumentException("The argument passed to the SonarQubeAgent getTaskUrl method is invalid. " +
+      throw new IllegalArgumentException("The argument passed to the SonarQubeAgent getTaskId method is invalid. " +
         "It could be empty or null.") as Throwable
     }
 
-    return sonarQubeTaskUrl
+    return sonarQubeTaskId
   }
 
   /**
    * Gets the SonarQube task data by contacting the SonarQube task URL and parsing the returned JSON.
-   * @param taskUrl The SonarQube task URL.
+   * @param sonarQubeRootUrl The root URL of SonarQube (e.g. https://sonarqube.internal.example.com).
+   * @param taskId The SonarQube task ID.
    * @param accessTokenId The ID of the access token used by SonarQube to authenticate.
    * @return The task data object.
    * @throws IllegalArgumentException when passing an empty or null argument.
    */
-  def getTaskData(final String taskUrl, final String accessTokenId) throws IllegalArgumentException {
+  def getTaskData(final String sonarQubeRootUrl, final String taskId, final String accessTokenId)
+      throws IllegalArgumentException {
     def jsonObject
 
-    if (taskUrl && accessTokenId) {
+    if (sonarQubeRootUrl && taskId && accessTokenId) {
       steps.withCredentials([steps.string(credentialsId: accessTokenId, variable: "accessToken")]) {
-        String jsonResult = steps.sh(script: "curl -u ${steps.accessToken}: --connect-timeout 5 ${taskUrl} || true",
-          returnStdout: true).trim()
+        String jsonResult = steps.sh(script: "curl -u ${steps.accessToken}: --connect-timeout 5 " +
+          "${sonarQubeRootUrl}/api/ce/task?id=${taskId} || true", returnStdout: true).trim()
         jsonObject = new JsonSlurperClassic().parseText(jsonResult)
       }
     } else {
@@ -129,11 +131,11 @@ class SonarQubeAgent implements Serializable {
                       throws IllegalArgumentException, InvalidDirOrFileNameException, GenericToolsException {
     if (currentJobInstWorkspacePath && sonarQubeRootUrl && accessTokenId && queryIntervalSecs) {
       if (new FileSystemHandler(steps).isValidDirectoryName(currentJobInstWorkspacePath)) {
-        String sonarTaskUrl = getTaskUrl(currentJobInstWorkspacePath)
-        def sonarQubeTask = getTaskData(sonarTaskUrl, accessTokenId)
+        String sonarTaskId = getTaskId(currentJobInstWorkspacePath)
+        def sonarQubeTask = getTaskData(sonarQubeRootUrl, sonarTaskId, accessTokenId)
 
         // if data is valid, continue
-        if (sonarTaskUrl && sonarQubeTask && sonarQubeTask.status) {
+        if (sonarTaskId && sonarQubeTask && sonarQubeTask.status) {
           while (sonarQubeTask.status == "PENDING" || sonarQubeTask.status == "IN_PROGRESS") {
             steps.echo "Waiting for the SonarQube scan results..."
 
@@ -142,7 +144,7 @@ class SonarQubeAgent implements Serializable {
 
             // get latest data and update status
             steps.echo "Polling the SonarQube server for the latest task data..."
-            sonarQubeTask = getTaskData(sonarTaskUrl, accessTokenId)
+            sonarQubeTask = getTaskData(sonarQubeRootUrl, sonarTaskId, accessTokenId)
           }
 
           // fail the Jenkins job if the status is CANCELED or FAILED

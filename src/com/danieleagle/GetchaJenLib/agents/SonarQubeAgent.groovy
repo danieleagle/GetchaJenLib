@@ -93,21 +93,23 @@ class SonarQubeAgent implements Serializable {
    */
   String getQualityGateStatus(final String sonarQubeRootUrl, final String accessTokenId, final String analysisId)
       throws IllegalArgumentException {
-    def jsonObject
+    String qualityGateStatus = ""
 
     if (sonarQubeRootUrl && accessTokenId && analysisId) {
       steps.withCredentials([steps.string(credentialsId: accessTokenId, variable: "apiToken")]) {
         String jsonResult =
           steps.sh(script: "curl -u ${steps.apiToken}: --connect-timeout 5 ${sonarQubeRootUrl}/api/qualitygates" +
             "/project_status?analysisId=${analysisId} || true", returnStdout: true).trim()
-        jsonObject = new JsonSlurperClassic().parseText(jsonResult)
+        Map projectStatusInfo = new JsonSlurperClassic().parseText(jsonResult)
+        qualityGateStatus = (projectStatusInfo.get("projectStatus") && projectStatusInfo.get("projectStatus").get("status"))
+          ? projectStatusInfo.get("projectStatus").get("status") : ""
       }
     } else {
       throw new IllegalArgumentException("The argument passed to the SonarQubeAgent getQualityGateStatus method " +
         "is invalid. It could be empty or null.") as Throwable
     }
 
-    return (jsonObject.projectStatus) ? jsonObject.projectStatus : jsonObject
+    return qualityGateStatus
   }
 
   /**

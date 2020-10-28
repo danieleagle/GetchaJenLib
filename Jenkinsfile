@@ -27,20 +27,20 @@ globals.set(
   ]
 )
 
-// The list of user emails that can skip a stage via a merge request comment. If a merge request fails, a user can enter
-// a special comment in GitLab to make Jenkins retry the job. The comments applicable to different users are below.
+// The list of merge request author usernames that can skip a stage via a merge request comment. If a merge request fails,
+// a user can enter a special comment in GitLab to make Jenkins retry the job. The comments applicable to different users
+// are below.
 //
 // Regular User:                          Jenkins Retry, Skip Phases - none
 // Stage Skip User (those on below list): Jenkins Retry, Skip Phases - stage name,stage name, stage name
 //
-// The names of the stages must be separated by commas.
-globals.set("STAGE_SKIP_USER_EMAILS", [ "john.smith@example.com", "jane.smith@example.com" ])
+globals.set("STAGE_SKIP_MERG_REQ_USERNAMES", [ "john_smith", "jane_smith" ])
 
-// the list of user emails that can deploy to test
-globals.set("TEST_DEPLOYERS_USER_EMAILS", [ "john.smith@example.com", "jane.smith@example.com" ])
+// the list of merge request author usernames that can deploy to test
+globals.set("TEST_DEPLOYERS_MERG_REQ_USERNAMES", [ "john_smith", "jane_smith" ])
 
-// the list of user emails that can deploy to production
-globals.set("PRODUCTION_DEPLOYERS_USER_EMAILS", [ "john.smith@example.com", "jane.smith@example.com" ])
+// the list of merge request author usernames that can deploy to production
+globals.set("PROD_DEPLOYERS_MERG_REQ_USERNAMES", [ "john_smith", "jane_smith" ])
 
 // the credentials ID of the accepted token that GitLab sends with the webhook
 globals.set("WEBHOOK_TOKEN_CRED_ID", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
@@ -158,6 +158,9 @@ globals.set("MR_LOCKED_BRANCHES_JENKINS_CONTAINER_PATH",
   "${globals.get('JENKINS_PARENT_WORKSPACE_CONTAINER_PATH')}/merge-req-data")
 globals.set("MR_LOCKED_BRANCHES_FILE_NAME", "merge-request-locked-branches.txt")
 
+// if using SonarQube Community Edition, set this true - for commercial versions, set this to false
+globals.set("SONARQUBE_IS_COMMUNITY_EDITION", true)
+
 // the internal root URL of the SonarQube server, including the port (port can be removed if using 443 or 80)
 globals.set("SONARQUBE_INTERNAL_ROOT_URL", "http://sonarqube:9000")
 
@@ -225,10 +228,6 @@ globals.set("MAVEN_WORKSPACE_HOST_PATH", globals.get("JENKINS_CHILD_WORKSPACE_HO
 
 // path to Maven workspace on the Maven container
 globals.set("MAVEN_WORKSPACE_CONTAINER_PATH", "/usr/src/maven-project")
-
-// path to Maven config on the Jenkins container
-globals.set("MAVEN_CONFIG_JENKINS_CONTAINER_PATH",
-  "${globals.get('JENKINS_PARENT_WORKSPACE_CONTAINER_PATH')}/tools-data/maven/config")
 
 // path to Maven settings file on the host
 globals.set("MAVEN_SETTINGS_FILE_HOST_PATH",
@@ -501,7 +500,6 @@ void callPrepareAndEnforceLogic() {
   // create necessary directories
   jobDataManager.createDirectories([
     globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
-    globals.get("MAVEN_CONFIG_JENKINS_CONTAINER_PATH"),
     globals.get("MAVEN_LOCAL_REPO_JENKINS_CONTAINER_PATH"),
     globals.get("MAVEN_LOCAL_SONARQUBE_DATA_JENKINS_CONTAINER_PATH"),
     globals.get("OWASP_DEP_CHECK_DATA_JENKINS_CONTAINER_PATH"),
@@ -511,6 +509,29 @@ void callPrepareAndEnforceLogic() {
   // print important GitLab environment details (useful for debugging)
   infoPeeker.printGitlabEnvDetails()
 
+  Map mergeReqAuthorInfo = [:]
+
+  if (env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE")) {
+    echo "Retrieving the author information for the merge request with ID ${gitlabMergeRequestId}..."
+
+    mergeReqAuthorInfo =
+      gitRunner.getMergeReqAuthorInfo(
+        globals.get("GITLAB_INTERNAL_ROOT_URL"),
+        [
+          "gitServerCredentialsId" : globals.get("GITLAB_USER_CRED_ID"),
+          "gitServerApiTokenCredId": globals.get("GITLAB_API_CURL_CRED_ID")
+        ],
+        [
+          "userFullName"    : globals.get("CICD_ADMIN_NAME"),
+          "userEmailAddress": globals.get("CICD_ADMIN_EMAIL")
+        ],
+        globals.get("GITLAB_MERGE_REQ_INTERNAL_PATH_URL"),
+        env.gitlabMergeRequestId.toString()
+      )
+  } else {
+    echo "Skipped retrieving the merge request author information since the GitLab action isn't MERGE or NOTE."
+  }
+
   // set requested stages to skip
   if ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
       && env.gitlabSourceBranch && env.gitlabTargetBranch
@@ -519,8 +540,8 @@ void callPrepareAndEnforceLogic() {
       || (gitRunner.isValidRef(env.gitlabSourceBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX"))
       && gitRunner.isValidRef(env.gitlabTargetBranch.toString(), globals.get("TEST_BRANCH_REGEX")))) {
     globals.set("STAGES_TO_SKIP", globals.get("SKIPPABLE_STAGES"))
-  } else if (env.gitlabActionType && env.gitlabActionType.toString() == "NOTE" && env.gitlabUserEmail
-      && globals.get("STAGE_SKIP_USER_EMAILS").contains(env.gitlabUserEmail.toString()) && env.gitlabTriggerPhrase) {
+  } else if (env.gitlabActionType && env.gitlabActionType.toString() == "NOTE" && mergeReqAuthorInfo.get("username")
+      && globals.get("STAGE_SKIP_MERG_REQ_USERNAMES").contains(mergeReqAuthorInfo.get("username")) && env.gitlabTriggerPhrase) {
     globals.set("STAGES_TO_SKIP",
       jobDataManager.getStagesToSkip(globals.get("SKIPPABLE_STAGES"), env.gitlabTriggerPhrase.toString()))
   } else if (env.stagesToSkip) {
@@ -529,8 +550,9 @@ void callPrepareAndEnforceLogic() {
     globals.set("STAGES_TO_SKIP", [])
   }
 
-  if (env.gitlabActionType && env.gitlabSourceBranch && env.gitlabTargetBranch && env.gitlabUserEmail
-      && (env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE")) {
+  if (env.gitlabActionType && env.gitlabSourceBranch && env.gitlabTargetBranch && mergeReqAuthorInfo.get("username")
+      && mergeReqAuthorInfo.get("name") && (env.gitlabActionType.toString() == "MERGE"
+      || env.gitlabActionType.toString() == "NOTE")) {
     if (merReqAuthorizer.isAllowed(globals.get("MR_LOCKED_BRANCHES_JENKINS_CONTAINER_PATH"),
         globals.get("MR_LOCKED_BRANCHES_FILE_NAME"), env.gitlabTargetBranch.toString())) {
       echo "The target branch for this merge request isn't locked. Proceeding..."
@@ -543,10 +565,12 @@ void callPrepareAndEnforceLogic() {
     }
 
     if (gitRunner.isValidRef(env.gitlabTargetBranch.toString(), globals.get("PRODUCTION_BRANCH_REGEX"))) {
-      if (globals.get("PRODUCTION_DEPLOYERS_USER_EMAILS").contains(env.gitlabUserEmail.toString())) {
-        echo "The user with email ${env.gitlabUserEmail.toString()} is allowed to promote to production."
+      if (globals.get("PROD_DEPLOYERS_MERG_REQ_USERNAMES").contains(mergeReqAuthorInfo.get("username"))) {
+        echo "The user ${mergeReqAuthorInfo.get('name')} with username ${mergeReqAuthorInfo.get('username')} is allowed " +
+          "to promote to production."
       } else {
-        error("The user with email ${env.gitlabUserEmail.toString()} isn't allowed to promote to production.")
+        error("The user ${mergeReqAuthorInfo.get('name')} with username ${mergeReqAuthorInfo.get('username')} isn't " +
+          "allowed to promote to production.")
       }
 
       if (gitRunner.isValidRef(env.gitlabSourceBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX"))) {
@@ -555,10 +579,12 @@ void callPrepareAndEnforceLogic() {
         error("Promoting to production is only possible if using the development source branch.")
       }
     } else if (gitRunner.isValidRef(env.gitlabTargetBranch.toString(), globals.get("TEST_BRANCH_REGEX"))) {
-      if (globals.get("TEST_DEPLOYERS_USER_EMAILS").contains(env.gitlabUserEmail.toString())) {
-        echo "The user with email ${env.gitlabUserEmail.toString()} is allowed to promote to test."
+      if (globals.get("TEST_DEPLOYERS_MERG_REQ_USERNAMES").contains(mergeReqAuthorInfo.get("username"))) {
+        echo "The user ${mergeReqAuthorInfo.get('name')} with username ${mergeReqAuthorInfo.get('username')} is allowed " +
+          "to promote to test."
       } else {
-        error("The user with email ${env.gitlabUserEmail.toString()} isn't allowed to promote to test.")
+        error("The user ${mergeReqAuthorInfo.get('name')} with username ${mergeReqAuthorInfo.get('username')} isn't " +
+          "allowed to promote to test.")
       }
 
       if (gitRunner.isValidRef(env.gitlabSourceBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX"))) {
@@ -887,23 +913,63 @@ void callSonarQubeScanLogic() {
 
   withSonarQubeEnv("SonarQube") {
     withCredentials([string(credentialsId: globals.get("SONARQUBE_CRED_ID"), variable: "accessToken")]) {
-      // requires the SonarQube Maven Plugin configured in pom.xml
-      // - see https://docs.sonarqube.org/latest/analysis/scan/sonarscanner-for-maven/
-      dockerBroker.invokeAction(
-        env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
-        globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-        globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-        globals.get("MAVEN_CONTAINER_OPTS"),
-        "/usr/local/bin/mvn-entrypoint.sh mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar " +
-        "-Dsonar.host.url=${globals.get('SONARQUBE_INTERNAL_ROOT_URL')} -Dsonar.scm.disabled=true " +
-        "-Dsonar.projectKey=${globals.get('SONARQUBE_PROJECT_ID')} -Dsonar.login=${accessToken} " +
-        "-Dsonar.dependencyCheck.xmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-        "/target/owasp-dep-check-report/dependency-check-report.xml " +
-        "-Dsonar.dependencyCheck.jsonReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-        "/target/owasp-dep-check-report/dependency-check-report.json " +
-        "-Dsonar.dependencyCheck.htmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-        "/target/owasp-dep-check-report/dependency-check-report.html"
-      )
+      if (globals.get("SONARQUBE_IS_COMMUNITY_EDITION")) {
+        dockerBroker.invokeAction(
+          env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
+          globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
+          globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
+          globals.get("MAVEN_CONTAINER_OPTS"),
+          "/usr/local/bin/mvn-entrypoint.sh mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar " +
+          "-Dsonar.host.url=${globals.get('SONARQUBE_INTERNAL_ROOT_URL')} -Dsonar.scm.disabled=true " +
+          "-Dsonar.projectKey=${globals.get('SONARQUBE_PROJECT_ID')} -Dsonar.login=${accessToken} " +
+          "-Dsonar.dependencyCheck.xmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+          "/target/owasp-dep-check-report/dependency-check-report.xml " +
+          "-Dsonar.dependencyCheck.jsonReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+          "/target/owasp-dep-check-report/dependency-check-report.json " +
+          "-Dsonar.dependencyCheck.htmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+          "/target/owasp-dep-check-report/dependency-check-report.html"
+        )
+      } else {
+        if (env.gitlabMergeRequestId && env.gitlabSourceBranch && env.gitlabTargetBranch) {
+          // requires the SonarQube Maven Plugin configured in pom.xml
+          // - see https://docs.sonarqube.org/latest/analysis/scan/sonarscanner-for-maven/
+          dockerBroker.invokeAction(
+            env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
+            globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
+            globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
+            globals.get("MAVEN_CONTAINER_OPTS"),
+            "/usr/local/bin/mvn-entrypoint.sh mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar " +
+            "-Dsonar.host.url=${globals.get('SONARQUBE_INTERNAL_ROOT_URL')} -Dsonar.scm.disabled=true " +
+            "-Dsonar.projectKey=${globals.get('SONARQUBE_PROJECT_ID')} -Dsonar.login=${accessToken} " +
+            "-Dsonar.dependencyCheck.xmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+            "/target/owasp-dep-check-report/dependency-check-report.xml " +
+            "-Dsonar.dependencyCheck.jsonReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+            "/target/owasp-dep-check-report/dependency-check-report.json " +
+            "-Dsonar.dependencyCheck.htmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+            "/target/owasp-dep-check-report/dependency-check-report.html " +
+            "-Dsonar.pullrequest.key=${gitlabMergeRequestId} " +
+            "-Dsonar.pullrequest.branch=${gitlabSourceBranch} " +
+            "-Dsonar.pullrequest.base=${gitlabTargetBranch}"
+          )
+        } else {
+          dockerBroker.invokeAction(
+            env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
+            globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
+            globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
+            globals.get("MAVEN_CONTAINER_OPTS"),
+            "/usr/local/bin/mvn-entrypoint.sh mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar " +
+            "-Dsonar.host.url=${globals.get('SONARQUBE_INTERNAL_ROOT_URL')} -Dsonar.scm.disabled=true " +
+            "-Dsonar.projectKey=${globals.get('SONARQUBE_PROJECT_ID')} -Dsonar.login=${accessToken} " +
+            "-Dsonar.dependencyCheck.xmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+            "/target/owasp-dep-check-report/dependency-check-report.xml " +
+            "-Dsonar.dependencyCheck.jsonReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+            "/target/owasp-dep-check-report/dependency-check-report.json " +
+            "-Dsonar.dependencyCheck.htmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
+            "/target/owasp-dep-check-report/dependency-check-report.html " +
+            "-Dsonar.branch.name=${(env.gitlabBranch) ? env.gitlabBranch.toString() : globals.get("MANUAL_JOB_INVOCATION_BRANCH")}"
+          )
+        }
+      }
     }
 
     // don't continue unless the quality gate has passed
@@ -1055,8 +1121,8 @@ lock(env.JOB_NAME.toString()) {
           stage("Validate Artifacts") {
             gitlabCommitStatus(env.STAGE_NAME.toString()) {
               when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
-                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
+                  || env.gitlabActionType.toString() == "NOTE"))
                   || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
                 retry(globals.get("VALIDATE_ARTIFACTS_STAGE_RETRY_COUNT")) {
                   validator.checkArtifacts()
@@ -1149,9 +1215,9 @@ lock(env.JOB_NAME.toString()) {
           stage("Test") {
             gitlabCommitStatus(env.STAGE_NAME.toString()) {
               when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
-                  || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
-                  && env.deployOnly.toBoolean() == false))) {
+                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
                 retry(globals.get("TEST_STAGE_RETRY_COUNT")) {
                   callTestLogic()
                 }
@@ -1175,9 +1241,9 @@ lock(env.JOB_NAME.toString()) {
           stage("OWASP Dependency Check") {
             gitlabCommitStatus(env.STAGE_NAME.toString()) {
               when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
-                  || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
-                  && env.deployOnly.toBoolean() == false))) {
+                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
                 retry(globals.get("OWASP_DEP_CHECK_STAGE_RETRY_COUNT")) {
                   callOwaspDepCheckLogic()
                 }
@@ -1188,9 +1254,9 @@ lock(env.JOB_NAME.toString()) {
           stage("SonarQube Scan") {
             gitlabCommitStatus(env.STAGE_NAME.toString()) {
               when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
-                  || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
-                  && env.deployOnly.toBoolean() == false))) {
+                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
                 retry(globals.get("SONARQUBE_SCANNING_STAGE_RETRY_COUNT")) {
                   callSonarQubeScanLogic()
                 }
@@ -1242,7 +1308,8 @@ lock(env.JOB_NAME.toString()) {
             gitlabCommitStatus(env.STAGE_NAME.toString()) {
               when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
                   && ((env.gitlabActionType && env.gitlabActionType.toString() == "PUSH")
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean()))) {
+                  || (env.gitlabActionType == null && env.chosenBranch && (env.deployOnly.toBoolean()
+                  || env.deployOnly.toBoolean() == false)))) {
                 retry(globals.get("APP_DEPLOYMENT_STAGE_RETRY_COUNT")) {
                   callAppDeploymentLogic()
                 }

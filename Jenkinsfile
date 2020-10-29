@@ -394,15 +394,19 @@ globals.set("OWASP_DEP_CHECK_CONTAINER_OPTS",
   "--network ${globals.get('DOCKER_CONTAINER_NETWORK')} ${globals.get('OWASP_DEP_CHECK_VOLUME_OPTS')} " +
   "--entrypoint=''")
 
-// will cause job to fail if any vulnerabilities detected are greater than or equal to the score number between 0 and 10,
-// setting this to 0 will never cause a job failure
+// will cause job to fail if any vulnerabilities detected are greater than or equal to the score number between 0 and 10
 // 0       = None
 // 1 to 3  = Low
 // 4 to 6  = Medium
 // 7 to 8  = High
 // 9 to 10 = Critical
-// see https://jeremylong.github.io/DependencyCheck/dependency-check-cli/arguments.html
-globals.set("OWASP_DEP_CHECK_FAIL_SCORE", "7")
+// --------------------
+// 11      = Never Fail
+// --------------------
+// see https://jeremylong.github.io/DependencyCheck/dependency-check-cli/arguments.html and
+// https://github.com/jeremylong/DependencyCheck/issues/2778#issuecomment-685691248
+globals.set("OWASP_DEP_CHECK_FAIL_SCORE", "11") // setting this to never fail as SonarQube will take care of failures
+                                                // using a custom quality gate
 
 // the name of the file containing the OWASP Dependency Check suppressions (allows for ignoring potential false positives)
 // see https://jeremylong.github.io/DependencyCheck/general/suppression.html
@@ -914,6 +918,8 @@ void callSonarQubeScanLogic() {
   withSonarQubeEnv("SonarQube") {
     withCredentials([string(credentialsId: globals.get("SONARQUBE_CRED_ID"), variable: "accessToken")]) {
       if (globals.get("SONARQUBE_IS_COMMUNITY_EDITION")) {
+        // requires the SonarQube Maven Plugin configured in pom.xml
+        // - see https://docs.sonarqube.org/latest/analysis/scan/sonarscanner-for-maven/
         dockerBroker.invokeAction(
           env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
           globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
@@ -931,8 +937,6 @@ void callSonarQubeScanLogic() {
         )
       } else {
         if (env.gitlabMergeRequestId && env.gitlabSourceBranch && env.gitlabTargetBranch) {
-          // requires the SonarQube Maven Plugin configured in pom.xml
-          // - see https://docs.sonarqube.org/latest/analysis/scan/sonarscanner-for-maven/
           dockerBroker.invokeAction(
             env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
             globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),

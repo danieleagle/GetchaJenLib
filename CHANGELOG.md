@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+
+* [BUG_FIX] Fixed Bug when Parsing JSON from Sonar
+
 ## 1.3.0
 
 * [FEATURE] Added Auto Accept MR from Dev to Test Branch

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2
+
+* [BUG_FIX] Fixed Bug With Spaces Handling
+
 ## 1.3.1
 
 * [BUG_FIX] Fixed Bug when Parsing JSON from Sonar

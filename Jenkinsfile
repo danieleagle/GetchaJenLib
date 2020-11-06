@@ -42,9 +42,6 @@ globals.set("TEST_DEPLOYERS_MERG_REQ_USERNAMES", [ "john_smith", "jane_smith" ])
 // the list of merge request author usernames that can deploy to production
 globals.set("PROD_DEPLOYERS_MERG_REQ_USERNAMES", [ "john_smith", "jane_smith" ])
 
-// the credentials ID of the accepted token that GitLab sends with the webhook
-globals.set("WEBHOOK_TOKEN_CRED_ID", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
-
 // the name of the branch to use when manually invoking the job in Jenkins rather than an outside trigger
 if (env.chosenBranch) {
   globals.set("MANUAL_JOB_INVOCATION_BRANCH", env.chosenBranch.toString())
@@ -274,7 +271,7 @@ globals.set("MAVEN_VOLUME_OPTS",
   "-v ${globals.get('MAVEN_LOCAL_SONARQUBE_DATA_HOST_PATH')}:${globals.get('MAVEN_LOCAL_SONARQUBE_DATA_CONTAINER_PATH')}")
 
 // environment variables used by Docker when performing Maven operations
-globals.set("MAVEN_ENV_OPTS", "-e MAVEN_JOB_NAME=${JOB_NAME} -e MAVEN_OPTS=-Xmx512m")
+globals.set("MAVEN_ENV_OPTS", "-e MAVEN_JOB_NAME=\"${globals.get('APPLICATION_NAME')}\" -e MAVEN_OPTS=-Xmx512m")
 
 // the combined Maven container options (uses the same network where Nexus is running for proper name resolution for
 // items in the settings.xml file)
@@ -321,7 +318,7 @@ globals.set("DOCKERFILE_LINTER_IGNORED_RULES", [
 // name of the image and tag to use for performing application versioning and changelog generation
 // see https://github.com/GetchaDEAGLE/eagle-versioner
 globals.set("EAGLE_VERSIONER_IMAGE_NAME", "docker-registry.internal.example.com/cicd/eagle-versioner")
-globals.set("EAGLE_VERSIONER_IMAGE_TAG", "1.3.2")
+globals.set("EAGLE_VERSIONER_IMAGE_TAG", "1.3.4")
 
 // path to Git repo on the host running Eagle Versioner
 globals.set("EAGLE_VERSIONER_WORKSPACE_HOST_PATH", globals.get("JENKINS_CHILD_WORKSPACE_HOST_PATH"))
@@ -659,7 +656,6 @@ void callPrepareAndEnforceLogic() {
   }
 
   jobPropsUpdater.invoke(
-    globals.get("WEBHOOK_TOKEN_CRED_ID"),
     globals.get("PRODUCTION_BRANCH_REGEX"),
     globals.get("MR_NOTE_REGEX_STRING"),
     globals.get("MAX_BUILDS_TO_KEEP"),

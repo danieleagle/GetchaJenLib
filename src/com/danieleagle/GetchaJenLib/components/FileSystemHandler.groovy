@@ -116,9 +116,9 @@ class FileSystemHandler implements Serializable {
         String dirAndFileName = combineDirAndFileName(directory, fileName)
 
         if (grepFor) {
-          fileContents = steps.sh(script: "cat ${dirAndFileName} | grep '${grepFor}' || true", returnStdout: true).trim()
+          fileContents = steps.sh(script: "cat \"${dirAndFileName}\" | grep \"${grepFor}\" || true", returnStdout: true).trim()
         } else {
-          fileContents = steps.sh(script: "cat ${dirAndFileName} || true", returnStdout: true).trim()
+          fileContents = steps.sh(script: "cat \"${dirAndFileName}\" || true", returnStdout: true).trim()
         }
       } else {
         throw new InvalidDirOrFileNameException("The directory or filename contains invalid characters.") as Throwable
@@ -145,7 +145,7 @@ class FileSystemHandler implements Serializable {
     if (directory && fileName && (fileContents == "" || fileContents.length() > 0)) {
       if (isValidDirectoryName(directory) && isValidFileName(fileName)) {
         String dirAndFileName = combineDirAndFileName(directory, fileName)
-        int commandExitCode = steps.sh(script: "echo '${fileContents}' > ${dirAndFileName}",
+        int commandExitCode = steps.sh(script: "echo \"${fileContents}\" > \"${dirAndFileName}\"",
           returnStatus: true)
 
         // if no errors when creating the file, notify the user of successful creation
@@ -177,7 +177,7 @@ class FileSystemHandler implements Serializable {
     if (directory && fileName) {
       if (isValidDirectoryName(directory) && isValidFileName(fileName)) {
         String dirAndFileName = combineDirAndFileName(directory, fileName)
-        int commandExitCode = steps.sh(script: "rm ${dirAndFileName}", returnStatus: true)
+        int commandExitCode = steps.sh(script: "rm \"${dirAndFileName}\"", returnStatus: true)
 
         // if no errors when deleting the file, notify the user of successful deletion
         if (commandExitCode == 0) {
@@ -205,7 +205,7 @@ class FileSystemHandler implements Serializable {
   void createDir(final String directory) throws IllegalArgumentException, InvalidDirOrFileNameException, IOException {
     if (directory) {
       if (isValidDirectoryName(directory)) {
-        int commandExitCode = steps.sh(script: "mkdir -p ${directory}", returnStatus: true)
+        int commandExitCode = steps.sh(script: "mkdir -p \"${directory}\"", returnStatus: true)
 
         // if no errors when creating the directory, notify the user of successful creation
         if (commandExitCode == 0) {
@@ -233,7 +233,7 @@ class FileSystemHandler implements Serializable {
   void deleteDir(final String directory) throws IllegalArgumentException, InvalidDirOrFileNameException, IOException {
     if (directory) {
       if (isValidDirectoryName(directory)) {
-        int commandExitCode = steps.sh(script: "rm -rf ${directory}", returnStatus: true)
+        int commandExitCode = steps.sh(script: "rm -rf \"${directory}\"", returnStatus: true)
 
         // if no errors when deleting the file, notify the user of successful deletion
         if (commandExitCode == 0) {
@@ -266,7 +266,7 @@ class FileSystemHandler implements Serializable {
     if (directory && fileName) {
       if (isValidDirectoryName(directory) && isValidFileName(fileName)) {
         doesFileExist =
-          steps.sh(script: "test -f ${combineDirAndFileName(directory, fileName)} && echo \"true\" || echo \"false\"",
+          steps.sh(script: "test -f \"${combineDirAndFileName(directory, fileName)}\" && echo \"true\" || echo \"false\"",
           returnStdout: true).trim().toBoolean()
       } else {
         throw new InvalidDirOrFileNameException("The directory or filename contains invalid characters.") as Throwable
@@ -291,7 +291,7 @@ class FileSystemHandler implements Serializable {
 
     if (directory) {
       if (isValidDirectoryName(directory)) {
-        doesDirExist = steps.sh(script: "test -d ${directory} && echo \"true\" || echo \"false\"",
+        doesDirExist = steps.sh(script: "test -d \"${directory}\" && echo \"true\" || echo \"false\"",
           returnStdout: true).trim().toBoolean()
       } else {
         throw new InvalidDirOrFileNameException("The directory to check for existence contains invalid characters.") as Throwable
@@ -316,7 +316,7 @@ class FileSystemHandler implements Serializable {
       throws IllegalArgumentException, InvalidDirOrFileNameException, IOException {
     if (sourceDir && destDir) {
       if (isValidDirectoryName(sourceDir) && isValidDirectoryName(destDir)) {
-        int commandExitCode = steps.sh(script: "cp -R ${sourceDir}/. ${destDir}", returnStatus: true)
+        int commandExitCode = steps.sh(script: "cp -R \"${sourceDir}\"/. \"${destDir}\"", returnStatus: true)
 
         // if no errors were found when copying directory contents, notify the user of successful copy
         if (commandExitCode == 0) {
@@ -345,7 +345,7 @@ class FileSystemHandler implements Serializable {
   void deleteDirContents(final String directory) throws IllegalArgumentException, InvalidDirOrFileNameException, IOException {
     if (directory) {
       if (isValidDirectoryName(directory)) {
-        int commandExitCode = steps.sh(script: "rm -rf ${directory}/*", returnStatus: true)
+        int commandExitCode = steps.sh(script: "rm -rf \"${directory}\"/*", returnStatus: true)
 
         // if no errors were found in deleting the folder, notify the user of successful deletion
         if (commandExitCode == 0) {
@@ -374,7 +374,7 @@ class FileSystemHandler implements Serializable {
 
     if (path) {
       if (isValidDirectoryName(path)) {
-        String commandOutput = steps.sh(script: "ls -1 ${path}", returnStdout: true).trim()
+        String commandOutput = steps.sh(script: "ls -1 \"${path}\"", returnStdout: true).trim()
         directories = (commandOutput) ? commandOutput.split("\n") : []
       } else {
         throw new InvalidDirOrFileNameException("The path used to get sub-directories contains invalid " +

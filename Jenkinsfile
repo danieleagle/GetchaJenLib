@@ -755,6 +755,34 @@ void callCalcVerLogic() {
 }
 
 /**
+* Invokes the Lint Stage Logic.
+*/
+void callLintLogic() {
+  echo "Running linting actions..."
+
+  if (jobDataManager.doesFileExist(globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
+      globals.get("HADOLINT_CONFIG_FILE_NAME"))) {
+    echo "Found the ${globals.get('HADOLINT_CONFIG_FILE_NAME')} configuration file in the local repo " +
+      "which will now be used for the Hadolint scan."
+
+    // validate Hadolint config file
+    jobDataManager.validateHadolintConfigFile(globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
+      globals.get("HADOLINT_CONFIG_FILE_NAME"), globals.get("DOCKER_TRUSTED_REGISTRIES"),
+      globals.get("DOCKERFILE_LINTER_IGNORED_RULES"))
+  } else {
+    echo "Did not find the ${globals.get('HADOLINT_CONFIG_FILE_NAME')} configuration file in the " +
+      "local repo. The default configuration will be used."
+  }
+
+  dockerBroker.invokeAction(
+    env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
+    globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
+    globals.get("HADOLINT_IMAGE_NAME"), globals.get("HADOLINT_IMAGE_TAG"),
+    globals.get("HADOLINT_CONTAINER_OPTS"), "hadolint Dockerfile"
+  )
+}
+
+/**
 * Invokes the Update Version Stage Logic.
 */
 void callUpdateVerLogic() {
@@ -846,34 +874,6 @@ void callTestLogic() {
     // send email stating the system tests failed but don't fail the current job instance
     // so developers aren't held up
   }*/
-}
-
-/**
-* Invokes the Lint Stage Logic.
-*/
-void callLintLogic() {
-  echo "Running linting actions..."
-
-  if (jobDataManager.doesFileExist(globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
-      globals.get("HADOLINT_CONFIG_FILE_NAME"))) {
-    echo "Found the ${globals.get('HADOLINT_CONFIG_FILE_NAME')} configuration file in the local repo " +
-      "which will now be used for the Hadolint scan."
-
-    // validate Hadolint config file
-    jobDataManager.validateHadolintConfigFile(globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
-      globals.get("HADOLINT_CONFIG_FILE_NAME"), globals.get("DOCKER_TRUSTED_REGISTRIES"),
-      globals.get("DOCKERFILE_LINTER_IGNORED_RULES"))
-  } else {
-    echo "Did not find the ${globals.get('HADOLINT_CONFIG_FILE_NAME')} configuration file in the " +
-      "local repo. The default configuration will be used."
-  }
-
-  dockerBroker.invokeAction(
-    env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
-    globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
-    globals.get("HADOLINT_IMAGE_NAME"), globals.get("HADOLINT_IMAGE_TAG"),
-    globals.get("HADOLINT_CONTAINER_OPTS"), "hadolint Dockerfile"
-  )
 }
 
 /**
@@ -1122,190 +1122,260 @@ lock(env.JOB_NAME.toString()) {
             }
           }
 
-          stage("Validate Artifacts") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
-                  || env.gitlabActionType.toString() == "NOTE"))
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("VALIDATE_ARTIFACTS_STAGE_RETRY_COUNT")) {
-                  validator.checkArtifacts()
+          stage("Artifact/Code Checks") {
+            parallelStages = [:]
+
+            parallelStages.put("Validate Artifacts", {
+              stage("Validate Artifacts") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
+                      || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("VALIDATE_ARTIFACTS_STAGE_RETRY_COUNT")) {
+                      validator.checkArtifacts()
+                    }
+                  }
                 }
               }
-            }
+            })
+
+            parallelStages.put("Secrets Scan", {
+              stage("Secrets Scan") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
+                      || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
+                      && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("SECRETS_SCAN_STAGE_RETRY_COUNT")) {
+                      callSecretsScanLogic()
+                    }
+                  }
+                }
+              }
+            })
+
+            parallel(parallelStages)
           }
 
-          stage("Secrets Scan") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
-                  || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
-                  && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("SECRETS_SCAN_STAGE_RETRY_COUNT")) {
-                  callSecretsScanLogic()
+          stage("Get/Calculate Version") {
+            parallelStages = [:]
+
+            parallelStages.put("Get Current Version") {
+              stage("Get Current Version") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                      || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("GET_CURRENT_VERSION_STAGE_RETRY_COUNT")) {
+                      callGetCurrentVerLogic()
+                    }
+                  }
                 }
               }
             }
+
+            parallelStages.put("Calculate Version") {
+              stage("Calculate Version") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                      || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("CALC_VERSION_STAGE_RETRY_COUNT")) {
+                      callCalcVerLogic()
+                    }
+                  }
+                }
+              }
+            }
+
+            parallel(parallelStages)
           }
 
-          stage("Get Current Version") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
-                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("GET_CURRENT_VERSION_STAGE_RETRY_COUNT")) {
-                  callGetCurrentVerLogic()
+          stage("Update Version/Lint") {
+            parallelStages = [:]
+
+            parallelStages.put("Update Version", {
+              stage("Update Version") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && globals.get("NEW_VERSION") && globals.get("CURRENT_VERSION")
+                      && globals.get("CURRENT_VERSION") != globals.get("NEW_VERSION")
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                      || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("UPDATE_VERSION_STAGE_RETRY_COUNT")) {
+                      callUpdateVerLogic()
+                    }
+                  }
                 }
               }
-            }
+            })
+
+            parallelStages.put("Lint", {
+              stage("Lint") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
+                      || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
+                      && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("LINT_STAGE_RETRY_COUNT")) {
+                      callLintLogic()
+                    }
+                  }
+                }
+              }
+            })
+
+            parallel(parallelStages)
           }
 
-          stage("Calculate Version") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
-                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("CALC_VERSION_STAGE_RETRY_COUNT")) {
-                  callCalcVerLogic()
+          stage("Generate Changelog/Perform Build") {
+            parallelStages = [:]
+
+            parallelStages.put("Generate Changelog", {
+              stage("Generate Changelog") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && globals.get("NEW_VERSION") && globals.get("CURRENT_VERSION")
+                      && globals.get("CURRENT_VERSION") != globals.get("NEW_VERSION")
+                      && ((env.gitlabActionType && env.gitlabActionType.toString() == "PUSH")
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("CHANGELOG_GEN_STAGE_RETRY_COUNT")) {
+                      callGenChangelogLogic()
+                    }
+                  }
                 }
               }
-            }
+            })
+
+            parallelStages.put("Build", {
+              stage("Build") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                      || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("BUILD_STAGE_RETRY_COUNT")) {
+                      callBuildLogic()
+                    }
+                  }
+                }
+              }
+            })
+
+            parallel(parallelStages)
           }
 
-          stage("Update Version") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && globals.get("NEW_VERSION") && globals.get("CURRENT_VERSION")
-                  && globals.get("CURRENT_VERSION") != globals.get("NEW_VERSION")
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
-                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("UPDATE_VERSION_STAGE_RETRY_COUNT")) {
-                  callUpdateVerLogic()
+          stage("Test/OWASP Dependency Check") {
+            parallelStages = [:]
+
+            parallelStages.put("Test", {
+              stage("Test") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                      || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("TEST_STAGE_RETRY_COUNT")) {
+                      callTestLogic()
+                    }
+                  }
                 }
               }
-            }
+            })
+
+            parallelStages.put("OWASP Dependency Check", {
+              stage("OWASP Dependency Check") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                      || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("OWASP_DEP_CHECK_STAGE_RETRY_COUNT")) {
+                      callOwaspDepCheckLogic()
+                    }
+                  }
+                }
+              }
+            })
+
+            parallel(parallelStages)
           }
 
-          stage("Generate Changelog") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && globals.get("NEW_VERSION") && globals.get("CURRENT_VERSION")
-                  && globals.get("CURRENT_VERSION") != globals.get("NEW_VERSION")
-                  && ((env.gitlabActionType && env.gitlabActionType.toString() == "PUSH")
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("CHANGELOG_GEN_STAGE_RETRY_COUNT")) {
-                  callGenChangelogLogic()
+          stage("Static Code Analysis") {
+            parallelStages = [:]
+
+            parallelStages.put("SonarQube Scan", {
+              stage("SonarQube Scan") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                      || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("SONARQUBE_SCANNING_STAGE_RETRY_COUNT")) {
+                      callSonarQubeScanLogic()
+                    }
+                  }
                 }
               }
-            }
+            })
+
+            parallelStages.put("Veracode Scan", {
+              stage("Veracode Scan") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
+                      || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
+                      && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("VERACODE_SCANNING_STAGE_RETRY_COUNT")) {
+                      echo "Running Veracode scan..."
+                      veracodeScanner.invoke(globals.get("VERACODE_CRED_ID"), globals.get("VERACODE_SCAN_OPTIONS"))
+                    }
+                  }
+                }
+              }
+            })
+
+            parallel(parallelStages)
           }
 
-          stage("Build") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
-                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("BUILD_STAGE_RETRY_COUNT")) {
-                  callBuildLogic()
-                }
-              }
-            }
-          }
+          stage("Code/Artifacts Push") {
+            parallelStages = [:]
 
-          stage("Test") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
-                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("TEST_STAGE_RETRY_COUNT")) {
-                  callTestLogic()
+            parallelStages.put("Version/Changelog Push", {
+              stage("Version/Changelog Push") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && globals.get("NEW_VERSION") && globals.get("CURRENT_VERSION")
+                      && globals.get("CURRENT_VERSION") != globals.get("NEW_VERSION")
+                      && ((env.gitlabActionType && env.gitlabActionType.toString() == "PUSH")
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("VERSION_CHANGELOG_PUSH_STAGE_RETRY_COUNT")) {
+                      callVerAndClPushLogic()
+                    }
+                  }
                 }
               }
-            }
-          }
+            })
 
-          stage("Lint") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
-                  || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
-                  && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("LINT_STAGE_RETRY_COUNT")) {
-                  callLintLogic()
+            parallelStages.put("Build Artifacts Push", {
+              stage("Build Artifacts Push") {
+                gitlabCommitStatus(env.STAGE_NAME.toString()) {
+                  when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
+                      && ((env.gitlabActionType && env.gitlabActionType.toString() == "PUSH")
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
+                    retry(globals.get("PUSH_BUILD_ARTIFACTS_STAGE_RETRY_COUNT")) {
+                      callBuildArtifPushLogic()
+                    }
+                  }
                 }
               }
-            }
-          }
+            })
 
-          stage("OWASP Dependency Check") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
-                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("OWASP_DEP_CHECK_STAGE_RETRY_COUNT")) {
-                  callOwaspDepCheckLogic()
-                }
-              }
-            }
-          }
-
-          stage("SonarQube Scan") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
-                  || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("SONARQUBE_SCANNING_STAGE_RETRY_COUNT")) {
-                  callSonarQubeScanLogic()
-                }
-              }
-            }
-          }
-
-          stage("Veracode Scan") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
-                  || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
-                  && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("VERACODE_SCANNING_STAGE_RETRY_COUNT")) {
-                  echo "Running Veracode scan..."
-                  veracodeScanner.invoke(globals.get("VERACODE_CRED_ID"), globals.get("VERACODE_SCAN_OPTIONS"))
-                }
-              }
-            }
-          }
-
-          stage("Version/Changelog Push") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && globals.get("NEW_VERSION") && globals.get("CURRENT_VERSION")
-                  && globals.get("CURRENT_VERSION") != globals.get("NEW_VERSION")
-                  && ((env.gitlabActionType && env.gitlabActionType.toString() == "PUSH")
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("VERSION_CHANGELOG_PUSH_STAGE_RETRY_COUNT")) {
-                  callVerAndClPushLogic()
-                }
-              }
-            }
-          }
-
-          stage("Build Artifacts Push") {
-            gitlabCommitStatus(env.STAGE_NAME.toString()) {
-              when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                  && ((env.gitlabActionType && env.gitlabActionType.toString() == "PUSH")
-                  || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
-                retry(globals.get("PUSH_BUILD_ARTIFACTS_STAGE_RETRY_COUNT")) {
-                  callBuildArtifPushLogic()
-                }
-              }
-            }
+            parallel(parallelStages)
           }
 
           stage("App Deployment") {

@@ -5,8 +5,6 @@ import java.util.regex.Pattern
 
 /**
 * Sets up the properties for the job. Overwrites anything configured in the GUI.
-* @param webhookTokenCredId The webhook credentials ID containing the token sent to Jenkins. Valid tokens should trigger
-*                           the job successfully.
 * @param productionBranchRegex The production branch regex.
 * @param noteRegexString The note regex string used to trigger Jenkins from the merge request comment.
 * @param maxBuildsToKeep The maximum number of builds to keep in history.
@@ -23,11 +21,11 @@ import java.util.regex.Pattern
 *                           param can be empty.
 * @throws IllegalArgumentException when passing an empty or null argument.
 */
-void invoke(final String webhookTokenCredId, final Pattern productionBranchRegex, final String noteRegexString,
-            final String maxBuildsToKeep, final List skippableStages, final Map gitLabConnectionProps,
-            final Map gitlabActionDetails, final List validBranches, final String buildTriggerBranchesCsv,
-            final Map ciSkipExclBranches) throws IllegalArgumentException {
-  if (webhookTokenCredId && productionBranchRegex && noteRegexString && maxBuildsToKeep.isNumber() && skippableStages
+void invoke(final Pattern productionBranchRegex, final String noteRegexString, final String maxBuildsToKeep,
+            final List skippableStages, final Map gitLabConnectionProps, final Map gitlabActionDetails,
+            final List validBranches, final String buildTriggerBranchesCsv, final Map ciSkipExclBranches)
+    throws IllegalArgumentException {
+  if (productionBranchRegex && noteRegexString && maxBuildsToKeep.isNumber() && skippableStages
       && gitLabConnectionProps && gitLabConnectionProps.get("gitlabConnectionName")
       && gitLabConnectionProps.get("gitlabConnectionCredId") && validBranches && buildTriggerBranchesCsv) {
     String exclCiSkipPushBranchesCsv =
@@ -55,60 +53,57 @@ void invoke(final String webhookTokenCredId, final Pattern productionBranchRegex
 
     String skippableStagesCsv = stringBuilder.toString()
 
-    withCredentials([string(credentialsId: webhookTokenCredId, variable: "webhookToken")]) {
-      properties(
-        [
-          disableConcurrentBuilds(),
-          buildDiscarder(logRotator(numToKeepStr: maxBuildsToKeep)),
-          parameters(
-            [
-              choice(choices: validBranches, description: "", name: "chosenBranch"),
-              extendedChoice(description: "Stages that are to be skipped if authorized.", multiSelectDelimiter: ",",
-                name: "stagesToSkip", quoteValue: false, saveJSONParameterToFile: false, type: "PT_MULTI_SELECT",
-                value: skippableStagesCsv, visibleItemCount: 20),
-              booleanParam(defaultValue: false, description: "Perform only the deployment. Assumes all other stages " +
-                "previously ran and all deployment artifacts are staged.", name: "deployOnly")
-            ]
-          ),
+    properties(
+      [
+        disableConcurrentBuilds(),
+        buildDiscarder(logRotator(numToKeepStr: maxBuildsToKeep)),
+        parameters(
           [
-            $class: "GitLabConnectionProperty",
-            gitLabConnection: gitLabConnectionProps.get("gitlabConnectionName"),
-            jobCredentialId: gitLabConnectionProps.get("gitlabConnectionCredId"),
-            useAlternativeCredential: true
-          ],
-          pipelineTriggers([
-            [
-              $class                        : "GitLabPushTrigger",
-              triggerOnPush                 : true,
-              triggerOnMergeRequest         : true,
-              triggerOpenMergeRequestOnPush : "both",
-              triggerOnNoteRequest          : true,
-              noteRegex                     : noteRegexString,
-              skipWorkInProgressMergeRequest: true,
-              ciSkipOnPush                  : true,
-              exclCiSkipPushBranchesCsv     : exclCiSkipPushBranchesCsv,
-              ciSkipOnMerge                 : false,
-              exclCiSkipMergeBranchesCsv    : exclCiSkipMergeBranchesCsv,
-              ciSkipOnNote                  : false,
-              exclCiSkipNoteBranchesCsv     : exclCiSkipNoteBranchesCsv,
-              ciSkipOnPipeline              : true,
-              exclCiSkipPipelineBranchesCsv : exclCiSkipPipelineBranchesCsv,
-              setBuildDescription           : true,
-              addNoteOnMergeRequest         : true,
-              addCiMessage                  : true,
-              addVoteOnMergeRequest         : false,
-              acceptMergeRequestOnSuccess   : false,
-              branchFilterType              : "NameBasedFilter",
-              includeBranchesSpec           : buildTriggerBranchesCsv,
-              excludeBranchesSpec           : "",
-              pendingBuildName              : "",
-              cancelPendingBuildsOnUpdate   : true,
-              secretToken                   : webhookToken
-            ]
-          ])
-        ]
-      )
-    }
+            choice(choices: validBranches, description: "", name: "chosenBranch"),
+            extendedChoice(description: "Stages that are to be skipped if authorized.", multiSelectDelimiter: ",",
+              name: "stagesToSkip", quoteValue: false, saveJSONParameterToFile: false, type: "PT_MULTI_SELECT",
+              value: skippableStagesCsv, visibleItemCount: 20),
+            booleanParam(defaultValue: false, description: "Perform only the deployment. Assumes all other stages " +
+              "previously ran and all deployment artifacts are staged.", name: "deployOnly")
+          ]
+        ),
+        [
+          $class: "GitLabConnectionProperty",
+          gitLabConnection: gitLabConnectionProps.get("gitlabConnectionName"),
+          jobCredentialId: gitLabConnectionProps.get("gitlabConnectionCredId"),
+          useAlternativeCredential: true
+        ],
+        pipelineTriggers([
+          [
+            $class                        : "GitLabPushTrigger",
+            triggerOnPush                 : true,
+            triggerOnMergeRequest         : true,
+            triggerOpenMergeRequestOnPush : "both",
+            triggerOnNoteRequest          : true,
+            noteRegex                     : noteRegexString,
+            skipWorkInProgressMergeRequest: true,
+            ciSkipOnPush                  : true,
+            exclCiSkipPushBranchesCsv     : exclCiSkipPushBranchesCsv,
+            ciSkipOnMerge                 : false,
+            exclCiSkipMergeBranchesCsv    : exclCiSkipMergeBranchesCsv,
+            ciSkipOnNote                  : false,
+            exclCiSkipNoteBranchesCsv     : exclCiSkipNoteBranchesCsv,
+            ciSkipOnPipeline              : true,
+            exclCiSkipPipelineBranchesCsv : exclCiSkipPipelineBranchesCsv,
+            setBuildDescription           : true,
+            addNoteOnMergeRequest         : true,
+            addCiMessage                  : true,
+            addVoteOnMergeRequest         : false,
+            acceptMergeRequestOnSuccess   : false,
+            branchFilterType              : "NameBasedFilter",
+            includeBranchesSpec           : buildTriggerBranchesCsv,
+            excludeBranchesSpec           : "",
+            pendingBuildName              : "",
+            cancelPendingBuildsOnUpdate   : true
+          ]
+        ])
+      ]
+    )
   } else {
     throw new IllegalArgumentException("The argument passed to the jobPropsUpdater.invoke step is invalid. It could be " +
       "empty or null.") as Throwable

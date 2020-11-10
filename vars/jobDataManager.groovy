@@ -66,6 +66,23 @@ String readFileAsString(final String currentJobInstWorkspacePath, final String f
 }
 
 /**
+ * Creates a file using the contents of a string.
+ * @param currentJobInstWorkspacePath The workspace path where the current job instance data is stored.
+ * @param fileName The name of the file to create.
+ * @param fileContents The file contents string.
+ * @throws IllegalArgumentException when passing an empty or null argument.
+ */
+void createFileFromString(final String currentJobInstWorkspacePath, final String fileName, final String fileContents)
+    throws IllegalArgumentException {
+  if (currentJobInstWorkspacePath && fileName && (fileContents == "" || fileContents.length() > 0)) {
+    new FileSystemHandler(this).createFileFromString(currentJobInstWorkspacePath, fileName, fileContents)
+  } else {
+    throw new IllegalArgumentException("The argument passed to the jobDataManager.createFileFromString step is " +
+      "invalid. It could be empty or null.") as Throwable
+  }
+}
+
+/**
 * Creates the directories used by the current Jenkins job instance.
 * @param directories The directories needed by the current job instance.
 * @throws IllegalArgumentException when passing an empty or null argument.

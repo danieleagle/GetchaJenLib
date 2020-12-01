@@ -72,7 +72,7 @@ class SonarQubeAgent implements Serializable {
 
     if (sonarQubeRootUrl && taskId && accessTokenId) {
       steps.withCredentials([steps.string(credentialsId: accessTokenId, variable: "accessToken")]) {
-        String jsonResult = steps.sh(script: "curl -u ${steps.accessToken}: --connect-timeout 5 " +
+        String jsonResult = steps.sh(script: "curl -u " + steps.accessToken + ": --connect-timeout 5 " +
           "${sonarQubeRootUrl}/api/ce/task?id=${taskId} || true", returnStdout: true).trim()
         def jsonObject = new JsonSlurperClassic().parseText(jsonResult)
         taskData = (jsonObject.get("task")) ? jsonObject.get("task") : [:]
@@ -101,7 +101,7 @@ class SonarQubeAgent implements Serializable {
     if (sonarQubeRootUrl && accessTokenId && analysisId) {
       steps.withCredentials([steps.string(credentialsId: accessTokenId, variable: "apiToken")]) {
         String jsonResult =
-          steps.sh(script: "curl -u ${steps.apiToken}: --connect-timeout 5 ${sonarQubeRootUrl}/api/qualitygates" +
+          steps.sh(script: "curl -u " + steps.apiToken + ": --connect-timeout 5 ${sonarQubeRootUrl}/api/qualitygates" +
             "/project_status?analysisId=${analysisId} || true", returnStdout: true).trim()
         Map projectStatusInfo = new JsonSlurperClassic().parseText(jsonResult)
         qualityGateStatus = (projectStatusInfo.get("projectStatus") && projectStatusInfo.get("projectStatus").get("status"))

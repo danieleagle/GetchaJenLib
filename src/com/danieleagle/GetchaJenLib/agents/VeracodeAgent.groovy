@@ -102,8 +102,8 @@ class VeracodeAgent implements Serializable {
           usernameVariable: "veracodeUserName", passwordVariable: "veracodePassword")]) {
         steps.sh "curl -O https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip"
         steps.sh "unzip pipeline-scan-LATEST.zip pipeline-scan.jar"
-        steps.sh "java -jar pipeline-scan.jar --veracode_api_id \"${steps.veracodeUserName}\" " +
-          "--veracode_api_key \"${steps.veracodePassword}\" " +
+        steps.sh "java -jar pipeline-scan.jar --veracode_api_id \"" + steps.veracodeUserName + "\" " +
+          "--veracode_api_key \"" + steps.veracodePassword + "\" " +
           "--file \"${scanOptions.get('filePath')}\" " +
           "--fail_on_severity=\"${scanOptions.get('failOnSeverity')}\" " +
           "--fail_on_cwe=\"${scanOptions.get('failOnCwe')}\" " +

@@ -146,7 +146,7 @@ class GitManager implements Serializable {
 
             // run the Git command to list the remote SHAs and filter the output to retrieve HEAD only and return
             // only the 40 character SHA and remove the rest (e.g. remove whitespace and HEAD after the SHA)
-            commandOutput = steps.sh(script: "git ls-remote ${httpPrefix}${steps.gitUserAndPassword}@${upstreamRepoFqdn} | grep HEAD",
+            commandOutput = steps.sh(script: "git ls-remote ${httpPrefix}" + steps.gitUserAndPassword + "@${upstreamRepoFqdn} | grep HEAD",
               returnStdout: true).substring(0, 41).trim()
           }
         }
@@ -287,8 +287,8 @@ class GitManager implements Serializable {
 
       steps.withCredentials([steps.string(credentialsId: gitServerApiTokenCredId, variable: "apiToken")]) {
         try {
-          fileContents = steps.sh(script: "curl --output /dev/stdout --request GET --header 'PRIVATE-TOKEN: ${steps.apiToken}' " +
-            "'${gitRootApiUrl}/${encodedSubpathAndFileName}/raw?ref=${reference}'", returnStdout: true).trim()
+          fileContents = steps.sh(script: "curl --output /dev/stdout --request GET --header \"PRIVATE-TOKEN: " +
+            steps.apiToken + "\" '${gitRootApiUrl}/${encodedSubpathAndFileName}/raw?ref=${reference}'",returnStdout: true).trim()
         } catch (Exception exception) {
           steps.error("An exception was thrown which has caused this job instance to fail. Please see below for the " +
             "details.\n\n" + exception.getMessage())
@@ -327,8 +327,8 @@ class GitManager implements Serializable {
         String jsonResult = ""
 
         try {
-          jsonResult = steps.sh(script: "curl --output /dev/stdout --request GET --header 'PRIVATE-TOKEN: ${steps.apiToken}' " +
-            "${gitMergeReqApiUrl}/${mergeReqId}", returnStdout: true).trim()
+          jsonResult = steps.sh(script: "curl --output /dev/stdout --request GET --header \"PRIVATE-TOKEN: " +
+            steps.apiToken + "\" ${gitMergeReqApiUrl}/${mergeReqId}", returnStdout: true).trim()
           Map mergeRequest = (jsonResult) ? new JsonSlurperClassic().parseText(jsonResult) : null
 
           if (mergeRequest.get("author") && mergeRequest.get("author").get("name") && mergeRequest.get("author").get("username")
@@ -376,8 +376,8 @@ class GitManager implements Serializable {
         String jsonResult = ""
 
         try {
-          jsonResult = steps.sh(script: "curl --output /dev/stdout --request GET --header 'PRIVATE-TOKEN: ${steps.apiToken}' " +
-            "${gitMergeReqApiUrl}/${mergeReqId}/commits", returnStdout: true).trim()
+          jsonResult = steps.sh(script: "curl --output /dev/stdout --request GET --header \"PRIVATE-TOKEN: " +
+            steps.apiToken + "\" ${gitMergeReqApiUrl}/${mergeReqId}/commits", returnStdout: true).trim()
           List mergeRequestObjects = (jsonResult) ? new JsonSlurperClassic().parseText(jsonResult) : []
 
           mergeRequestObjects.each {
@@ -484,7 +484,7 @@ class GitManager implements Serializable {
         steps.withCredentials([steps.usernameColonPassword(credentialsId: gitServerCredId,
             variable: "gitUserAndPassword")]) {
           setUserInfo()
-          steps.sh "git push ${httpPrefix}${steps.gitUserAndPassword}@${upstreamRepoFqdn} HEAD"
+          steps.sh "git push ${httpPrefix}" + steps.gitUserAndPassword + "@${upstreamRepoFqdn} HEAD"
         }
       } catch (Exception exception) {
         steps.error("An exception was thrown which has caused this job instance to fail. Please see below for the " +
@@ -512,7 +512,7 @@ class GitManager implements Serializable {
         steps.withCredentials([steps.usernameColonPassword(credentialsId: gitServerCredId,
             variable: "gitUserAndPassword")]) {
           setUserInfo()
-          steps.sh "git push ${httpPrefix}${steps.gitUserAndPassword}@${upstreamRepoFqdn} ${tag}"
+          steps.sh "git push ${httpPrefix}" + steps.gitUserAndPassword + "@${upstreamRepoFqdn} ${tag}"
         }
       } catch (Exception exception) {
         steps.error("An exception was thrown which has caused this job instance to fail. Please see below for the " +

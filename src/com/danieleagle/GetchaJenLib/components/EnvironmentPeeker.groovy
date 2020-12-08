@@ -49,7 +49,7 @@ class EnvironmentPeeker implements Serializable {
         "GitLab Source Repo SSH URL: ${steps.env.gitlabSourceRepoSshUrl}\n" +
         "GitLab Source Repo HTTP URL: ${steps.env.gitlabSourceRepoHttpUrl}\n" +
         "GitLab Merge Request Title: ${steps.env.gitlabMergeRequestTitle}\n" +
-        "GitLab Merge Request ID: ${steps.env.gitlabMergeRequestId}\n" +
+        "GitLab Merge Request ID: ${steps.env.gitlabMergeRequestIid}\n" +
         "GitLab Merge Request State: ${steps.env.gitlabMergeRequestState}\n" +
         "GitLab Merge Request Last Commit: ${steps.env.gitlabMergeRequestLastCommit}\n" +
         "GitLab Merge Request Target Project ID: ${steps.env.gitlabMergeRequestTargetProjectId}\n" +

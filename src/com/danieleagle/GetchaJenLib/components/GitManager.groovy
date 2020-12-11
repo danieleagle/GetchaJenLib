@@ -288,7 +288,7 @@ class GitManager implements Serializable {
       steps.withCredentials([steps.string(credentialsId: gitServerApiTokenCredId, variable: "apiToken")]) {
         try {
           fileContents = steps.sh(script: "curl --output /dev/stdout --request GET --header \"PRIVATE-TOKEN: " +
-            steps.apiToken + "\" '${gitRootApiUrl}/${encodedSubpathAndFileName}/raw?ref=${reference}'",returnStdout: true).trim()
+            steps.apiToken + "\" '${gitRootApiUrl}/${encodedSubpathAndFileName}/raw?ref=${reference}'", returnStdout: true).trim()
         } catch (Exception exception) {
           steps.error("An exception was thrown which has caused this job instance to fail. Please see below for the " +
             "details.\n\n" + exception.getMessage())
@@ -297,7 +297,7 @@ class GitManager implements Serializable {
         if (fileContents.contains("{\"message\":\"404 File Not Found\"}")) {
           throw new FileNotFoundException("Unable to retrieve ${fileName} as it doesn't exist.") as Throwable
         } else {
-          steps.echo "Successfully retrieved ${fileContents} from the specified location using the GitLab v4 API."
+          steps.echo "Successfully retrieved ${fileName} from the specified location using the GitLab v4 API."
         }
       }
     } else {

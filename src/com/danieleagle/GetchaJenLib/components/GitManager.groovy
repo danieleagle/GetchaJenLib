@@ -288,7 +288,7 @@ class GitManager implements Serializable {
       steps.withCredentials([steps.string(credentialsId: gitServerApiTokenCredId, variable: "apiToken")]) {
         try {
           fileContents = steps.sh(script: "curl --output /dev/stdout --request GET --header \"PRIVATE-TOKEN: " +
-            steps.apiToken + "\" '${gitRootApiUrl}/${encodedSubpathAndFileName}/raw?ref=${reference}'", returnStdout: true).trim()
+            steps.apiToken + "\" '${gitRootApiUrl}/${encodedSubpathAndFileName}/raw?ref=${reference}'", returnStdout: true)
         } catch (Exception exception) {
           steps.error("An exception was thrown which has caused this job instance to fail. Please see below for the " +
             "details.\n\n" + exception.getMessage())

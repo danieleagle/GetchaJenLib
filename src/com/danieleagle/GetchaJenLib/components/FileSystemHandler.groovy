@@ -138,23 +138,14 @@ class FileSystemHandler implements Serializable {
    * @param fileContents The file contents string.
    * @throws IllegalArgumentException when passing an empty or null argument.
    * @throws InvalidDirOrFileNameException when the specified directory or file name contains invalid characters.
-   * @throws IOException when problem occurs while creating the file.
    */
   void createFileFromString(final String directory, final String fileName, final String fileContents)
       throws IllegalArgumentException, InvalidDirOrFileNameException, IOException {
     if (directory && fileName && (fileContents == "" || fileContents.length() > 0)) {
       if (isValidDirectoryName(directory) && isValidFileName(fileName)) {
         String dirAndFileName = combineDirAndFileName(directory, fileName)
-        int commandExitCode = steps.sh(script: "echo \"${fileContents}\" > \"${dirAndFileName}\"",
-          returnStatus: true)
-
-        // if no errors when creating the file, notify the user of successful creation
-        if (commandExitCode == 0) {
-          steps.echo "Created/updated the file ${dirAndFileName}."
-        } else {
-          throw new IOException("There was a problem trying to create the file ${dirAndFileName}. Please notify a " +
-            "Jenkins administrator.") as Throwable
-        }
+        steps.writeFile(file: fileName, text: fileContents)
+        steps.echo "Created/updated the file ${dirAndFileName}."
       } else {
         throw new InvalidDirOrFileNameException("The directory or filename contains invalid characters.") as Throwable
       }

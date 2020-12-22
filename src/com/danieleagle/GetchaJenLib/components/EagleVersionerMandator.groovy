@@ -36,6 +36,11 @@ class EagleVersionerMandator implements Serializable {
     DEPENDENCY,
 
     /**
+     * The deprecate change type.
+     */
+    DEPRECATE,
+
+    /**
      * The documentation change type.
      */
     DOC,
@@ -54,6 +59,11 @@ class EagleVersionerMandator implements Serializable {
      * The refactor change type.
      */
     REFACTOR,
+
+    /**
+     * The remove change type.
+     */
+    REMOVE,
 
     /**
      * The styling change type.

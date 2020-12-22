@@ -146,8 +146,8 @@ class GitManager implements Serializable {
 
             // run the Git command to list the remote SHAs and filter the output to retrieve HEAD only and return
             // only the 40 character SHA and remove the rest (e.g. remove whitespace and HEAD after the SHA)
-            commandOutput = steps.sh(script: "git ls-remote ${httpPrefix}" + steps.gitUserAndPassword + "@${upstreamRepoFqdn} | grep HEAD",
-              returnStdout: true).substring(0, 41).trim()
+            commandOutput = steps.sh(script: "git ls-remote " + httpPrefix + steps.gitUserAndPassword + "@" +
+              upstreamRepoFqdn + " | grep HEAD", returnStdout: true).substring(0, 41).trim()
           }
         }
       } catch (Exception exception) {
@@ -484,7 +484,8 @@ class GitManager implements Serializable {
         steps.withCredentials([steps.usernameColonPassword(credentialsId: gitServerCredId,
             variable: "gitUserAndPassword")]) {
           setUserInfo()
-          steps.sh "git push ${httpPrefix}" + steps.gitUserAndPassword + "@${upstreamRepoFqdn} HEAD"
+          steps.sh(script: "git push " + httpPrefix + steps.gitUserAndPassword + "@" + upstreamRepoFqdn + " HEAD",
+            returnStdout: false)
         }
       } catch (Exception exception) {
         steps.error("An exception was thrown which has caused this job instance to fail. Please see below for the " +
@@ -512,7 +513,8 @@ class GitManager implements Serializable {
         steps.withCredentials([steps.usernameColonPassword(credentialsId: gitServerCredId,
             variable: "gitUserAndPassword")]) {
           setUserInfo()
-          steps.sh "git push ${httpPrefix}" + steps.gitUserAndPassword + "@${upstreamRepoFqdn} ${tag}"
+          steps.sh(script: "git push " + httpPrefix + steps.gitUserAndPassword + "@" + upstreamRepoFqdn + " " + tag,
+            returnStdout: false)
         }
       } catch (Exception exception) {
         steps.error("An exception was thrown which has caused this job instance to fail. Please see below for the " +

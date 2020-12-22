@@ -11,9 +11,6 @@ globals.set(
     "Checkout Code",
     "Validate Artifacts",
     "Secrets Scan",
-    "Get Current Version",
-    "Calculate Version",
-    "Update Version",
     "Generate Changelog",
     "Build",
     "Test",
@@ -34,13 +31,13 @@ globals.set(
 // Regular User:                          Jenkins Retry, Skip Phases - none
 // Stage Skip User (those on below list): Jenkins Retry, Skip Phases - stage name,stage name, stage name
 //
-globals.set("STAGE_SKIP_MERG_REQ_USERNAMES", [ "john_smith", "jane_smith" ])
+globals.set("STAGE_SKIP_MERG_REQ_USERNAMES", [ "root", "john" ])
 
 // the list of merge request author usernames that can deploy to test
-globals.set("TEST_DEPLOYERS_MERG_REQ_USERNAMES", [ "john_smith", "jane_smith" ])
+globals.set("TEST_DEPLOYERS_MERG_REQ_USERNAMES", [ "root", "john" ])
 
 // the list of merge request author usernames that can deploy to production
-globals.set("PROD_DEPLOYERS_MERG_REQ_USERNAMES", [ "john_smith", "jane_smith" ])
+globals.set("PROD_DEPLOYERS_MERG_REQ_USERNAMES", [ "root", "john" ])
 
 // the name of the branch to use when manually invoking the job in Jenkins rather than an outside trigger
 if (env.chosenBranch) {
@@ -93,13 +90,13 @@ globals.set("PUSH_BUILD_ARTIFACTS_STAGE_RETRY_COUNT", 2)
 globals.set("APP_DEPLOYMENT_STAGE_RETRY_COUNT", 0)
 
 // the name of the application related to this job
-globals.set("APPLICATION_NAME", "Spring Boot Demo")
+globals.set("APPLICATION_NAME", "Frontend Example")
 
 // the name of the Docker image for the application this Jenkins job belongs to
-globals.set("DOCKER_IMAGE_NAME", "docker-registry.internal.example.com/test/spring-boot-demo")
+globals.set("DOCKER_IMAGE_NAME", "docker-registry.example.com/apps/frontend-example")
 
 // the private Docker registry FQDN and port
-globals.set("DOCKER_PRIVATE_REGISTRY_FQDN_AND_PORT", "docker-registry.internal.example.com")
+globals.set("DOCKER_PRIVATE_REGISTRY_FQDN_AND_PORT", "docker-registry.example.com")
 
 // the private Docker registry URL where images are pulled from and pushed to
 globals.set("DOCKER_PRIVATE_REGISTRY_URL", "https://${globals.get('DOCKER_PRIVATE_REGISTRY_FQDN_AND_PORT')}")
@@ -108,7 +105,7 @@ globals.set("DOCKER_PRIVATE_REGISTRY_URL", "https://${globals.get('DOCKER_PRIVAT
 globals.set("DOCKER_PRIVATE_REGISTRY_CRED_ID", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 
 // the public Docker registry FQDN and port
-globals.set("DOCKER_PUBLIC_REGISTRY_FQDN_AND_PORT", "docker-hub.internal.example.com")
+globals.set("DOCKER_PUBLIC_REGISTRY_FQDN_AND_PORT", "docker-hub.example.com")
 
 // the public Docker registry URL where images are pulled from and pushed to
 globals.set("DOCKER_PUBLIC_REGISTRY_URL", "https://${globals.get('DOCKER_PUBLIC_REGISTRY_FQDN_AND_PORT')}")
@@ -128,7 +125,7 @@ globals.set("DOCKER_CONTAINER_MEMORY_CAP", "2048m")
 globals.set("DOCKER_CONTAINER_NETWORK", "cicd-tools")
 
 // the persistent volume base path on the host used by the CICD container tools to persist data
-globals.set("PERSISTENT_VOL_HOST_BASE_PATH", "/network-data/persistent-volumes/docker/cicd")
+globals.set("PERSISTENT_VOL_HOST_BASE_PATH", "/network-storage/persistent-volumes/docker/cicd")
 
 // the parent workspace host path used by Jenkins
 globals.set("JENKINS_PARENT_WORKSPACE_HOST_PATH",
@@ -156,16 +153,16 @@ globals.set("MR_LOCKED_BRANCHES_JENKINS_CONTAINER_PATH",
 globals.set("MR_LOCKED_BRANCHES_FILE_NAME", "merge-request-locked-branches.txt")
 
 // if using SonarQube Community Edition, set this true - for commercial versions, set this to false
-globals.set("SONARQUBE_IS_COMMUNITY_EDITION", true)
+globals.set("SONARQUBE_IS_COMMUNITY_EDITION", false)
 
 // the internal root URL of the SonarQube server, including the port (port can be removed if using 443 or 80)
 globals.set("SONARQUBE_INTERNAL_ROOT_URL", "http://sonarqube:9000")
 
 // the external root URL of the SonarQube server, including the port (port can be removed if using 443 or 80)
-globals.set("SONARQUBE_EXTERNAL_ROOT_URL", "https://sonarqube.internal.example.com")
+globals.set("SONARQUBE_EXTERNAL_ROOT_URL", "https://sonarqube.example.com")
 
 // the project ID as shown in SonarQube
-globals.set("SONARQUBE_PROJECT_ID", "test_spring-boot-demo")
+globals.set("SONARQUBE_PROJECT_ID", "frontend-example-920923232")
 
 // the internal URL for this project as shown on SonarQube
 globals.set("SONARQUBE_INTERNAL_PROJECT_URL",
@@ -181,6 +178,41 @@ globals.set("SONARQUBE_QUERY_INTERVAL", 10)
 // the credential ID needed to access the SonarQube API
 globals.set("SONARQUBE_CRED_ID", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 
+// name of the image and tag to use for performing Sonar Scanner operations
+globals.set("SONAR_SCANNER_IMAGE_NAME", "docker-hub.example.com/sonarsource/sonar-scanner-cli")
+globals.set("SONAR_SCANNER_IMAGE_TAG", "4.5")
+
+// path to Sonar Scanner workspace on the host
+globals.set("SONAR_SCANNER_WORKSPACE_HOST_PATH", globals.get("JENKINS_CHILD_WORKSPACE_HOST_PATH"))
+
+// path to Sonar Scanner workspace on the Sonar Scanner container
+globals.set("SONAR_SCANNER_WORKSPACE_CONTAINER_PATH", globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"))
+
+// path to local Sonar Scanner data on the Jenkins container
+globals.set("SONAR_SCANNER_DATA_JENKINS_CONTAINER_PATH",
+  "${globals.get('JENKINS_PARENT_WORKSPACE_CONTAINER_PATH')}/tools-data/sonar-scanner")
+
+// path to local Sonar Scanner data on the host
+globals.set("SONAR_SCANNER_DATA_HOST_PATH",
+  "${globals.get('JENKINS_PARENT_WORKSPACE_HOST_PATH')}/tools-data/sonar-scanner")
+
+// path to local Sonar Scanner data on the Sonar Scanner container
+globals.set("SONAR_SCANNER_DATA_CONTAINER_PATH", "/opt/sonar-scanner/.sonar/cache")
+
+// volume mappings used by Docker when performing Sonar Scanner operations
+globals.set("SONAR_SCANNER_VOLUME_OPTS",
+  "-v \"${globals.get('SONAR_SCANNER_WORKSPACE_HOST_PATH')}:${globals.get('SONAR_SCANNER_WORKSPACE_CONTAINER_PATH')}\" " +
+  "-v \"${globals.get('SONAR_SCANNER_DATA_HOST_PATH')}:${globals.get('SONAR_SCANNER_DATA_CONTAINER_PATH')}\"")
+
+// environment variables used by Docker when performing Sonar Scanner operations
+globals.set("SONAR_SCANNER_ENV_OPTS", "-e SONAR_SCANNER_OPTS=-Xmx512m")
+
+// the combined Sonar Scanner container options
+globals.set("SONAR_SCANNER_CONTAINER_OPTS",
+  "--cpus ${globals.get('DOCKER_CONTAINER_CPU_CAP')} --memory ${globals.get('DOCKER_CONTAINER_MEMORY_CAP')} " +
+  "--network ${globals.get('DOCKER_CONTAINER_NETWORK')} ${globals.get('SONAR_SCANNER_VOLUME_OPTS')} " +
+  "${globals.get('SONAR_SCANNER_ENV_OPTS')} --user=201:201")
+
 // the credentials ID for Veracode scanning
 globals.set("VERACODE_CRED_ID", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 
@@ -188,101 +220,80 @@ globals.set("VERACODE_CRED_ID", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 globals.set("VERACODE_SCAN_OPTIONS", [
   "applicationName": globals.get("APPLICATION_NAME"),
   "canFailJob": "true",
-  "criticality": "VeryLow", // values include VeryHigh, High, Medium, Low, VeryLow
+  "criticality": "High", // values include VeryHigh, High, Medium, Low, VeryLow
   "debug": "true",
   "sandboxName": "",
   "scanName": "build-" + env.BUILD_NUMBER.toString(),
   "teams": "Example Team",
   "timeout": "60",
-  "uploadIncludesPattern": "**/**.jar",
-  "waitForScan": "true"
+  "uploadIncludesPattern": "**/**.zip",
+  "waitForScan": "true",
+  "filePath": "target/frontend-example.zip",
+  "failOnSeverity": "Very High, High",
+  "failOnCwe": "80"
 ])
 
 // email recipients (separated by commas) where job notifications should be sent
-globals.set("EMAIL_NOTIFICATION_RECIPIENTS", "john.smith@example.com,jane.smith@example.com")
+globals.set("EMAIL_NOTIFICATION_RECIPIENTS", "john@example.com")
 
 // the email addresses that populate when replying to the email notification
-globals.set("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES", "john.smith@example.com,jane.smith@example.com")
+globals.set("EMAIL_NOTIFICATION_REPLY_TO_ADDRESSES", "john@example.com")
 
 // the file attachment pattern to include files as attachments in email notifications
 // - see https://github.com/jenkinsci/email-ext-plugin#attachments for more details
 globals.set("EMAIL_FILE_ATTACHMENT_PATTERN", "")
 
 // name and email address used by Git and notification emails
-globals.set("CICD_ADMIN_NAME", "Jenkins Administrator")
+globals.set("CICD_ADMIN_NAME", "Jenkins")
 globals.set("CICD_ADMIN_EMAIL", "jenkins-no-reply@example.com")
 
-// the repo URLs used by Maven (overwrites anything defined in pom.xml)
-globals.set("MAVEN_INTERNAL_RELEASE_REPO_URL", "http://nexus:8081/repository/maven-releases")
-globals.set("MAVEN_INTERNAL_SNAPSHOT_REPO_URL", "http://nexus:8081/repository/maven-snapshots")
+// name of the image and tag to use for performing NodeJS operations
+globals.set("NODEJS_IMAGE_NAME", "docker-registry.example.com/cicd/node")
+globals.set("NODEJS_IMAGE_TAG", "14.15.1-alpine3.12")
 
-// name of the image and tag to use for performing Maven operations
-globals.set("MAVEN_IMAGE_NAME", "docker-registry.internal.example.com/cicd/maven")
-globals.set("MAVEN_IMAGE_TAG", "3.6.3-amazoncorretto-11")
+// path to NodeJS workspace on the host
+globals.set("NODEJS_WORKSPACE_HOST_PATH", globals.get("JENKINS_CHILD_WORKSPACE_HOST_PATH"))
 
-// path to Maven workspace on the host
-globals.set("MAVEN_WORKSPACE_HOST_PATH", globals.get("JENKINS_CHILD_WORKSPACE_HOST_PATH"))
+// path to NodeJS workspace on the NodeJS container
+globals.set("NODEJS_WORKSPACE_CONTAINER_PATH", "/home/node/app")
 
-// path to Maven workspace on the Maven container
-globals.set("MAVEN_WORKSPACE_CONTAINER_PATH", "/usr/src/maven-project")
+// path to NodeJS settings file on the host
+globals.set("NODEJS_SETTINGS_FILE_HOST_PATH",
+  "${globals.get('PERSISTENT_VOL_HOST_BASE_PATH')}/nodejs/config/.npmrc")
 
-// path to Maven settings file on the host
-globals.set("MAVEN_SETTINGS_FILE_HOST_PATH",
-  "${globals.get('PERSISTENT_VOL_HOST_BASE_PATH')}/maven/config/settings.xml")
+// path to NodeJS settings file on the NodeJS container
+globals.set("NODEJS_SETTINGS_FILE_CONTAINER_PATH", "/home/node/.npmrc")
 
-// path to Maven settings file on the Maven container
-globals.set("MAVEN_SETTINGS_FILE_CONTAINER_PATH", "/usr/share/maven/ref/settings.xml")
+// path to NodeJS node_modules on the Jenkins container
+globals.set("NODEJS_NODE_MODULES_JENKINS_CONTAINER_PATH",
+  "${globals.get('JENKINS_PARENT_WORKSPACE_CONTAINER_PATH')}/tools-data/nodejs/node_modules")
 
-// path to Maven settings file on the host
-globals.set("MAVEN_SEC_SETTINGS_FILE_HOST_PATH",
-  "${globals.get('PERSISTENT_VOL_HOST_BASE_PATH')}/maven/config/settings-security.xml")
+// path to NodeJS remapped node_modules on the Jenkins container
+globals.set("NODEJS_RM_NODE_MODULES_JENKINS_CONTAINER_PATH",
+  "${globals.get('JENKINS_CHILD_WORKSPACE_CONTAINER_PATH')}/node_modules")
 
-// path to Maven settings file on the Maven container
-globals.set("MAVEN_SEC_SETTINGS_FILE_CONTAINER_PATH", "/usr/share/maven/ref/settings-security.xml")
+// path to NodeJS node_modules on the host
+globals.set("NODEJS_NODE_MODULES_HOST_PATH",
+  "${globals.get('JENKINS_PARENT_WORKSPACE_HOST_PATH')}/tools-data/nodejs/node_modules")
 
-// path to Maven local repo on the Jenkins container
-globals.set("MAVEN_LOCAL_REPO_JENKINS_CONTAINER_PATH",
-  "${globals.get('JENKINS_PARENT_WORKSPACE_CONTAINER_PATH')}/tools-data/maven/local-repo")
+// volume mappings used by Docker when performing NodeJS operations
+globals.set("NODEJS_VOLUME_OPTS",
+  "-v \"${globals.get('NODEJS_WORKSPACE_HOST_PATH')}:${globals.get('NODEJS_WORKSPACE_CONTAINER_PATH')}\" " +
+  "-v \"${globals.get('NODEJS_SETTINGS_FILE_HOST_PATH')}:${globals.get('NODEJS_SETTINGS_FILE_CONTAINER_PATH')}:ro\" " +
+  "-v \"${globals.get('NODEJS_NODE_MODULES_HOST_PATH')}:${globals.get('NODEJS_RM_NODE_MODULES_JENKINS_CONTAINER_PATH')}\"")
 
-// path to local Maven repo on the host
-globals.set("MAVEN_LOCAL_REPO_HOST_PATH",
-  "${globals.get('JENKINS_PARENT_WORKSPACE_HOST_PATH')}/tools-data/maven/local-repo")
+// environment variables used by Docker when performing NodeJS operations
+globals.set("NODEJS_ENV_OPTS", "-e CI=true")
 
-// path to local Maven repo on the Maven container
-globals.set("MAVEN_LOCAL_REPO_CONTAINER_PATH", "/var/maven/.m2/repositories")
-
-// path to Maven local SonarQube data on the Jenkins container
-globals.set("MAVEN_LOCAL_SONARQUBE_DATA_JENKINS_CONTAINER_PATH",
-  "${globals.get('JENKINS_PARENT_WORKSPACE_CONTAINER_PATH')}/tools-data/maven/sonarqube")
-
-// path to local SonarQube data on the host
-globals.set("MAVEN_LOCAL_SONARQUBE_DATA_HOST_PATH",
-  "${globals.get('JENKINS_PARENT_WORKSPACE_HOST_PATH')}/tools-data/maven/sonarqube")
-
-// path to local SonarQube data on the Maven container
-globals.set("MAVEN_LOCAL_SONARQUBE_DATA_CONTAINER_PATH", "/var/maven/.sonar")
-
-// volume mappings used by Docker when performing Maven operations
-globals.set("MAVEN_VOLUME_OPTS",
-  "-v ${globals.get('MAVEN_WORKSPACE_HOST_PATH')}:${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')} " +
-  "-v ${globals.get('MAVEN_SETTINGS_FILE_HOST_PATH')}:${globals.get('MAVEN_SETTINGS_FILE_CONTAINER_PATH')}:ro " +
-  "-v ${globals.get('MAVEN_SEC_SETTINGS_FILE_HOST_PATH')}:${globals.get('MAVEN_SEC_SETTINGS_FILE_CONTAINER_PATH')}:ro " +
-  "-v ${globals.get('MAVEN_LOCAL_REPO_HOST_PATH')}:${globals.get('MAVEN_LOCAL_REPO_CONTAINER_PATH')} " +
-  "-v ${globals.get('MAVEN_LOCAL_SONARQUBE_DATA_HOST_PATH')}:${globals.get('MAVEN_LOCAL_SONARQUBE_DATA_CONTAINER_PATH')}")
-
-// environment variables used by Docker when performing Maven operations
-globals.set("MAVEN_ENV_OPTS", "-e MAVEN_JOB_NAME=\"${globals.get('APPLICATION_NAME')}\" -e MAVEN_OPTS=-Xmx512m")
-
-// the combined Maven container options (uses the same network where Nexus is running for proper name resolution for
-// items in the settings.xml file)
-globals.set("MAVEN_CONTAINER_OPTS",
+// the combined NodeJS container options
+globals.set("NODEJS_CONTAINER_OPTS",
   "--cpus ${globals.get('DOCKER_CONTAINER_CPU_CAP')} --memory ${globals.get('DOCKER_CONTAINER_MEMORY_CAP')} " +
-  "--network ${globals.get('DOCKER_CONTAINER_NETWORK')} ${globals.get('MAVEN_VOLUME_OPTS')} ${globals.get('MAVEN_ENV_OPTS')} " +
-  "--entrypoint=''")
+  "--network ${globals.get('DOCKER_CONTAINER_NETWORK')} ${globals.get('NODEJS_VOLUME_OPTS')} ${globals.get('NODEJS_ENV_OPTS')} " +
+  "-w=\"${globals.get('NODEJS_WORKSPACE_CONTAINER_PATH')}\"")
 
 // name of the image and tag to use for performing Dockerfile linting
 // see https://hub.docker.com/r/hadolint/hadolint
-globals.set("HADOLINT_IMAGE_NAME", "docker-hub.internal.example.com/hadolint/hadolint")
+globals.set("HADOLINT_IMAGE_NAME", "docker-hub.example.com/hadolint/hadolint")
 globals.set("HADOLINT_IMAGE_TAG", "v1.18.0-6-ga0d655d-alpine")
 
 // the directory where the Dockerfile to lint is located on the host
@@ -293,7 +304,7 @@ globals.set("HADOLINT_WORKSPACE_CONTAINER_PATH", "/opt/hadolint/workspace")
 
 // volume mappings used by Docker when performing Dockerfile linting operations
 globals.set("HADOLINT_VOLUME_OPTS",
-  "-v ${globals.get('HADOLINT_WORKSPACE_HOST_PATH')}:${globals.get('HADOLINT_WORKSPACE_CONTAINER_PATH')}")
+  "-v \"${globals.get('HADOLINT_WORKSPACE_HOST_PATH')}:${globals.get('HADOLINT_WORKSPACE_CONTAINER_PATH')}\"")
 
 // the combined Hadolint container options
 globals.set("HADOLINT_CONTAINER_OPTS",
@@ -317,8 +328,8 @@ globals.set("DOCKERFILE_LINTER_IGNORED_RULES", [
 
 // name of the image and tag to use for performing application versioning and changelog generation
 // see https://github.com/GetchaDEAGLE/eagle-versioner
-globals.set("EAGLE_VERSIONER_IMAGE_NAME", "docker-registry.internal.example.com/cicd/eagle-versioner")
-globals.set("EAGLE_VERSIONER_IMAGE_TAG", "1.3.4")
+globals.set("EAGLE_VERSIONER_IMAGE_NAME", "docker-registry.example.com/eagle-versioner")
+globals.set("EAGLE_VERSIONER_IMAGE_TAG", "1.7.2")
 
 // path to Git repo on the host running Eagle Versioner
 globals.set("EAGLE_VERSIONER_WORKSPACE_HOST_PATH", globals.get("JENKINS_CHILD_WORKSPACE_HOST_PATH"))
@@ -328,7 +339,7 @@ globals.set("EAGLE_VERSIONER_WORKSPACE_CONTAINER_PATH", "/git-repo")
 
 // volume mappings used by Docker when performing application versioning
 globals.set("EAGLE_VERSIONER_VOLUME_OPTS",
-  "-v ${globals.get('EAGLE_VERSIONER_WORKSPACE_HOST_PATH')}:${globals.get('EAGLE_VERSIONER_WORKSPACE_CONTAINER_PATH')}")
+  "-v \"${globals.get('EAGLE_VERSIONER_WORKSPACE_HOST_PATH')}:${globals.get('EAGLE_VERSIONER_WORKSPACE_CONTAINER_PATH')}\"")
 
 // the combined Eagle Versioner container options
 globals.set("EAGLE_VERSIONER_CONTAINER_OPTS",
@@ -336,7 +347,7 @@ globals.set("EAGLE_VERSIONER_CONTAINER_OPTS",
   "--network ${globals.get('DOCKER_CONTAINER_NETWORK')} ${globals.get('EAGLE_VERSIONER_VOLUME_OPTS')}")
 
 // name of the image and tag to use for secrets scanning
-globals.set("GITLEAKS_IMAGE_NAME", "docker-hub.internal.example.com/zricethezav/gitleaks")
+globals.set("GITLEAKS_IMAGE_NAME", "docker-hub.example.com/zricethezav/gitleaks")
 globals.set("GITLEAKS_IMAGE_TAG", "v6.1.2")
 
 // path to Git repo on the host running GitLeaks
@@ -347,7 +358,7 @@ globals.set("GITLEAKS_WORKSPACE_CONTAINER_PATH", "/git-repo")
 
 // volume mappings used by Docker when performing secrets scanning
 globals.set("GITLEAKS_VOLUME_OPTS",
-  "-v ${globals.get('GITLEAKS_WORKSPACE_HOST_PATH')}:${globals.get('GITLEAKS_WORKSPACE_CONTAINER_PATH')}")
+  "-v \"${globals.get('GITLEAKS_WORKSPACE_HOST_PATH')}:${globals.get('GITLEAKS_WORKSPACE_CONTAINER_PATH')}\"")
 
 // the combined GitLeaks container options
 globals.set("GITLEAKS_CONTAINER_OPTS",
@@ -360,7 +371,7 @@ globals.set("GITLEAKS_CONFIG_FILE_NAME", ".gitleaks.toml")
 
 // name of the image and tag to use for performing OWASP Dependency Check operations
 // see https://hub.docker.com/r/owasp/dependency-check
-globals.set("OWASP_DEP_CHECK_IMAGE_NAME", "docker-hub.internal.example.com/owasp/dependency-check")
+globals.set("OWASP_DEP_CHECK_IMAGE_NAME", "docker-hub.example.com/owasp/dependency-check")
 globals.set("OWASP_DEP_CHECK_IMAGE_TAG", "6.0.1")
 
 // path to OWASP Dependency Check workspace on the host
@@ -382,8 +393,8 @@ globals.set("OWASP_DEP_CHECK_DATA_CONTAINER_PATH", "/usr/share/dependency-check/
 
 // volume mappings used by Docker when performing OWASP Dependency Check operations
 globals.set("OWASP_DEP_CHECK_VOLUME_OPTS",
-  "-v ${globals.get('OWASP_DEP_CHECK_WORKSPACE_HOST_PATH')}:${globals.get('OWASP_DEP_CHECK_WORKSPACE_CONTAINER_PATH')} " +
-  "-v ${globals.get('OWASP_DEP_CHECK_DATA_HOST_PATH')}:${globals.get('OWASP_DEP_CHECK_DATA_CONTAINER_PATH')}")
+  "-v \"${globals.get('OWASP_DEP_CHECK_WORKSPACE_HOST_PATH')}:${globals.get('OWASP_DEP_CHECK_WORKSPACE_CONTAINER_PATH')}\" " +
+  "-v \"${globals.get('OWASP_DEP_CHECK_DATA_HOST_PATH')}:${globals.get('OWASP_DEP_CHECK_DATA_CONTAINER_PATH')}\"")
 
 // the combined OWASP Dependency Check container options
 globals.set("OWASP_DEP_CHECK_CONTAINER_OPTS",
@@ -403,7 +414,7 @@ globals.set("OWASP_DEP_CHECK_CONTAINER_OPTS",
 // see https://jeremylong.github.io/DependencyCheck/dependency-check-cli/arguments.html and
 // https://github.com/jeremylong/DependencyCheck/issues/2778#issuecomment-685691248
 globals.set("OWASP_DEP_CHECK_FAIL_SCORE", "11") // setting this to never fail as SonarQube will take care of failures
-                                                // using a custom quality gate
+                                                // using the defined custom quality gate
 
 // the name of the file containing the OWASP Dependency Check suppressions (allows for ignoring potential false positives)
 // see https://jeremylong.github.io/DependencyCheck/general/suppression.html
@@ -434,10 +445,10 @@ globals.set("GITLAB_API_CRED_ID", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 
 // The GitLab project groups (including subgroups). A forward slash should separate each group (e.g. group/subgroup).
 // Leave this as an empty string if no groups are being used.
-globals.set("GITLAB_PROJECT_GROUPS", "test")
+globals.set("GITLAB_PROJECT_GROUPS", "example-group/example-sub-group")
 
 // the name of the Git project belonging to this Jenkins job
-globals.set("GITLAB_PROJECT_NAME", "spring-boot-demo")
+globals.set("GITLAB_PROJECT_NAME", "frontend-example")
 
 // the internal root URL of the GitLab server, including the port (port can be removed if using 443)
 globals.set("GITLAB_INTERNAL_ROOT_URL", "http://gitlab")
@@ -501,8 +512,8 @@ void callPrepareAndEnforceLogic() {
   // create necessary directories
   jobDataManager.createDirectories([
     globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
-    globals.get("MAVEN_LOCAL_REPO_JENKINS_CONTAINER_PATH"),
-    globals.get("MAVEN_LOCAL_SONARQUBE_DATA_JENKINS_CONTAINER_PATH"),
+    globals.get("NODEJS_NODE_MODULES_JENKINS_CONTAINER_PATH"),
+    globals.get("SONAR_SCANNER_DATA_JENKINS_CONTAINER_PATH"),
     globals.get("OWASP_DEP_CHECK_DATA_JENKINS_CONTAINER_PATH"),
     globals.get("MR_LOCKED_BRANCHES_JENKINS_CONTAINER_PATH")
   ])
@@ -513,7 +524,7 @@ void callPrepareAndEnforceLogic() {
   Map mergeReqAuthorInfo = [:]
 
   if (env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE")) {
-    echo "Retrieving the author information for the merge request with ID ${gitlabMergeRequestId}..."
+    echo "Retrieving the author information for the merge request with ID ${gitlabMergeRequestIid}..."
 
     mergeReqAuthorInfo =
       gitRunner.getMergeReqAuthorInfo(
@@ -527,7 +538,7 @@ void callPrepareAndEnforceLogic() {
           "userEmailAddress": globals.get("CICD_ADMIN_EMAIL")
         ],
         globals.get("GITLAB_MERGE_REQ_INTERNAL_PATH_URL"),
-        env.gitlabMergeRequestId.toString()
+        env.gitlabMergeRequestIid.toString()
       )
   } else {
     echo "Skipped retrieving the merge request author information since the GitLab action isn't MERGE or NOTE."
@@ -618,7 +629,7 @@ void callPrepareAndEnforceLogic() {
           "userEmailAddress": globals.get("CICD_ADMIN_EMAIL")
         ],
         globals.get("GITLAB_MERGE_REQ_INTERNAL_PATH_URL"),
-        env.gitlabMergeRequestId.toString()
+        env.gitlabMergeRequestIid.toString()
       )
 
     // validate all commit messages that are a part of the merge request and ensure they comply with Eagle Versioner
@@ -713,10 +724,9 @@ void callGetCurrentVerLogic() {
     dockerBroker.invokeAction(
       env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
       globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-      globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-      globals.get("MAVEN_CONTAINER_OPTS"),
-      "/usr/local/bin/mvn-entrypoint.sh mvn org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate " +
-      "-Dexpression=project.version -q -DforceStdout")
+      globals.get("NODEJS_IMAGE_NAME"), globals.get("NODEJS_IMAGE_TAG"),
+      globals.get("NODEJS_CONTAINER_OPTS"),
+      "node -p \"require('./package.json').version\"")
     )
 
   echo "The current version is ${globals.get('CURRENT_VERSION')}."
@@ -733,7 +743,7 @@ void callCalcVerLogic() {
     sh "git checkout ${gitlabBranch}"
   } else if ((env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE")
       && env.gitlabTargetBranch) {
-    sh "git checkout -b merge-req-${gitlabMergeRequestId}"
+    sh "git checkout -b merge-req-${gitlabMergeRequestIid}"
   } else {
     sh "git checkout ${globals.get('MANUAL_JOB_INVOCATION_BRANCH')}"
   }
@@ -743,7 +753,7 @@ void callCalcVerLogic() {
       env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
       globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
       globals.get("EAGLE_VERSIONER_IMAGE_NAME"), globals.get("EAGLE_VERSIONER_IMAGE_TAG"),
-      globals.get("EAGLE_VERSIONER_CONTAINER_OPTS"), "ev calculate --dev-appendage snapshot"
+      globals.get("EAGLE_VERSIONER_CONTAINER_OPTS"), "ev calculate --dev-appendage branch_name"
     )
   )
 
@@ -785,9 +795,9 @@ void callUpdateVerLogic() {
   dockerBroker.invokeAction(
     env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
     globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-    globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-    globals.get("MAVEN_CONTAINER_OPTS"),
-    "/usr/local/bin/mvn-entrypoint.sh mvn versions:set versions:commit -DnewVersion=${globals.get('NEW_VERSION')}"
+    globals.get("NODEJS_IMAGE_NAME"), globals.get("NODEJS_IMAGE_TAG"),
+    globals.get("NODEJS_CONTAINER_OPTS"),
+    "npm --no-git-tag-version version ${globals.get('NEW_VERSION')}"
   )
 
   dockerBroker.invokeAction(
@@ -795,7 +805,7 @@ void callUpdateVerLogic() {
     globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
     globals.get("EAGLE_VERSIONER_IMAGE_NAME"), globals.get("EAGLE_VERSIONER_IMAGE_TAG"),
     globals.get("EAGLE_VERSIONER_CONTAINER_OPTS"),
-    "git add pom.xml && ev commit --manual --dev-appendage snapshot --change-type version_change " +
+    "git add package.json && ev commit --manual --dev-appendage branch_name --change-type version_change " +
     "--new-version ${globals.get('NEW_VERSION')} --insert-skip-ci-tag"
   )
 }
@@ -818,19 +828,85 @@ void callGenChangelogLogic() {
 * Invokes the Build Stage Logic.
 */
 void callBuildLogic() {
-  echo "Building the application artifacts using Maven..."
+  echo "Building the application artifacts using NodeJS..."
+
+  String envFileName = ""
+
+  if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX")))
+      || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX")))) {
+    envFileName = ".env.development"
+  } else if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("TEST_BRANCH_REGEX")))
+      || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("TEST_BRANCH_REGEX")))) {
+    envFileName = ".env.test"
+  } else if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("PRODUCTION_BRANCH_REGEX")))
+      || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("PRODUCTION_BRANCH_REGEX")))) {
+    envFileName = ".env.production"
+  }
+
+  String envFileContents = gitRunner.getFileContents(
+    globals.get("GITLAB_INTERNAL_ROOT_URL"),
+    [
+      "gitServerCredentialsId" : globals.get("GITLAB_USER_CRED_ID"),
+      "gitServerApiTokenCredId": globals.get("GITLAB_API_CURL_CRED_ID")
+    ],
+    [
+      "userFullName"    : globals.get("CICD_ADMIN_NAME"),
+      "userEmailAddress": globals.get("CICD_ADMIN_EMAIL")
+    ],
+    globals.get("GITLAB_CONFIG_FILES_INTERNAL_PATH_URL"),
+    "/Build/frontend-example/config",
+    envFileName,
+    "master"
+  )
+
+  // must create the file as .env.production so npm run build uses it
+  jobDataManager.createFileFromString(
+    globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
+    ".env.production",
+    envFileContents
+  )
 
   dockerBroker.invokeAction(
     env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
     globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-    globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-    globals.get("MAVEN_CONTAINER_OPTS"), "/usr/local/bin/mvn-entrypoint.sh mvn install -DskipTests"
+    globals.get("NODEJS_IMAGE_NAME"), globals.get("NODEJS_IMAGE_TAG"),
+    globals.get("NODEJS_CONTAINER_OPTS"),
+    "rm .npmrc && npm install --loglevel verbose && npm run build"
   )
 
   if (jobDataManager.doesFileExist(globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"), ".dockerignore")
       && jobDataManager.doesFileExist(globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"), "Dockerfile")) {
+
+    String nginxConfigContents = gitRunner.getFileContents(
+      globals.get("GITLAB_INTERNAL_ROOT_URL"),
+      [
+        "gitServerCredentialsId" : globals.get("GITLAB_USER_CRED_ID"),
+        "gitServerApiTokenCredId": globals.get("GITLAB_API_CURL_CRED_ID")
+      ],
+      [
+        "userFullName"    : globals.get("CICD_ADMIN_NAME"),
+        "userEmailAddress": globals.get("CICD_ADMIN_EMAIL")
+      ],
+      globals.get("GITLAB_CONFIG_FILES_INTERNAL_PATH_URL"),
+      "/Build/frontend-example/config",
+      "nginx.conf",
+      "master"
+    )
+
+    jobDataManager.createFileFromString(
+      globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
+      "nginx.conf",
+      nginxConfigContents
+    )
+
     if ((env.gitlabActionType && env.gitlabActionType.toString() == "PUSH") || env.gitlabActionType == null
         && env.chosenBranch) {
+      dockerBroker.buildImage(
+        env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
+        globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
+        globals.get("DOCKER_IMAGE_NAME"), "latest"
+      )
+
       dockerBroker.buildImage(
         env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
         globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
@@ -852,15 +928,13 @@ void callBuildLogic() {
 * Invokes the Test Stage Logic.
 */
 void callTestLogic() {
-  echo "Running tests using Maven..."
+  echo "Running tests using NodeJS..."
 
-  // requires the JaCoCo Maven Plugin configured in pom.xml
-  // - see https://natritmeyer.com/howto/reporting-aggregated-unit-and-integration-test-coverage-with-jacoco/
   dockerBroker.invokeAction(
     env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
     globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-    globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-    globals.get("MAVEN_CONTAINER_OPTS"), "/usr/local/bin/mvn-entrypoint.sh mvn verify"
+    globals.get("NODEJS_IMAGE_NAME"), globals.get("NODEJS_IMAGE_TAG"),
+    globals.get("NODEJS_CONTAINER_OPTS"), "npm run test:cicd"
   )
 
   // TODO: insert system tests here such as Selenium, etc.
@@ -885,9 +959,9 @@ void callOwaspDepCheckLogic() {
       globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
       globals.get("OWASP_DEP_CHECK_IMAGE_NAME"), globals.get("OWASP_DEP_CHECK_IMAGE_TAG"),
       globals.get("OWASP_DEP_CHECK_CONTAINER_OPTS"),
-      "/usr/share/dependency-check/bin/dependency-check.sh --scan " +
-      "${globals.get('OWASP_DEP_CHECK_WORKSPACE_CONTAINER_PATH')} --format \"ALL\" " +
-      "--project \"${globals.get('APPLICATION_NAME')}\" --out /src/target/owasp-dep-check-report " +
+      "mkdir -p report/owasp-dep-check-report && /usr/share/dependency-check/bin/dependency-check.sh --scan " +
+      "${globals.get('OWASP_DEP_CHECK_WORKSPACE_CONTAINER_PATH')}/src --format \"ALL\" " +
+      "--project \"${globals.get('APPLICATION_NAME')}\" --out /src/report/owasp-dep-check-report " +
       "--failOnCVSS ${globals.get('OWASP_DEP_CHECK_FAIL_SCORE')} " +
       "--suppression /src/${globals.get('OWASP_DEP_CHECK_SUPPRESSION_FILE_NAME')}"
     )
@@ -897,9 +971,9 @@ void callOwaspDepCheckLogic() {
       globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
       globals.get("OWASP_DEP_CHECK_IMAGE_NAME"), globals.get("OWASP_DEP_CHECK_IMAGE_TAG"),
       globals.get("OWASP_DEP_CHECK_CONTAINER_OPTS"),
-      "/usr/share/dependency-check/bin/dependency-check.sh --scan " +
-      "${globals.get('OWASP_DEP_CHECK_WORKSPACE_CONTAINER_PATH')} --format \"ALL\" " +
-      "--project \"${globals.get('APPLICATION_NAME')}\" --out /src/target/owasp-dep-check-report " +
+      "mkdir -p report/owasp-dep-check-report && /usr/share/dependency-check/bin/dependency-check.sh --scan " +
+      "${globals.get('OWASP_DEP_CHECK_WORKSPACE_CONTAINER_PATH')}/src --format \"ALL\" " +
+      "--project \"${globals.get('APPLICATION_NAME')}\" --out /src/report/owasp-dep-check-report " +
       "--failOnCVSS ${globals.get('OWASP_DEP_CHECK_FAIL_SCORE')}"
     )
   }
@@ -909,63 +983,54 @@ void callOwaspDepCheckLogic() {
 * Invokes the SonarQube Scan Stage Logic.
 */
 void callSonarQubeScanLogic() {
-  echo "Running SonarQube scan using Maven..."
+  echo "Running SonarQube scan using Sonar Scanner CLI..."
 
   withSonarQubeEnv("SonarQube") {
     withCredentials([string(credentialsId: globals.get("SONARQUBE_CRED_ID"), variable: "accessToken")]) {
+      String mainSonarQubeCmd =
+        "sonar-scanner -Dsonar.projectBaseDir=\"${globals.get('SONAR_SCANNER_WORKSPACE_CONTAINER_PATH')}\" " +
+        "-Dsonar.working.directory=\"${globals.get('SONAR_SCANNER_WORKSPACE_CONTAINER_PATH')}/target/sonar\" " +
+        "-Dsonar.projectName=\"${globals.get('APPLICATION_NAME')}\" -Dsonar.projectVersion=${globals.get('NEW_VERSION')} " +
+        "-Dsonar.sources=src -Dsonar.tests=src/tests -Dsonar.exclusions=**/tests/** " +
+        "-Dsonar.tests.inclusions=src/tests/**/*.spec.js,src/tests/**/*.spec.jsx,src/tests/**/*.test.js,src/tests/**/*.test.jsx " +
+        "-Dsonar.dynamicAnalysis=reuseReports -Dsonar.host.url=${globals.get('SONARQUBE_INTERNAL_ROOT_URL')} " +
+        "-Dsonar.scm.disabled=true -Dsonar.projectKey=${globals.get('SONARQUBE_PROJECT_ID')} -Dsonar.login=" + '${accessToken}' + " " +
+        "-Dsonar.javascript.lcov.reportPaths=\"${globals.get('SONAR_SCANNER_WORKSPACE_CONTAINER_PATH')}/coverage/lcov.info\" " +
+        "-Dsonar.testExecutionReportPaths=\"${globals.get('SONAR_SCANNER_WORKSPACE_CONTAINER_PATH')}/report/test-report.xml\" " +
+        "-Dsonar.dependencyCheck.xmlReportPath=\"${globals.get('SONAR_SCANNER_WORKSPACE_CONTAINER_PATH')}" +
+        "/report/owasp-dep-check-report/dependency-check-report.xml\" " +
+        "-Dsonar.dependencyCheck.jsonReportPath=\"${globals.get('SONAR_SCANNER_WORKSPACE_CONTAINER_PATH')}" +
+        "/report/owasp-dep-check-report/dependency-check-report.json\" " +
+        "-Dsonar.dependencyCheck.htmlReportPath=\"${globals.get('SONAR_SCANNER_WORKSPACE_CONTAINER_PATH')}" +
+        "/report/owasp-dep-check-report/dependency-check-report.html\""
+
       if (globals.get("SONARQUBE_IS_COMMUNITY_EDITION")) {
-        // requires the SonarQube Maven Plugin configured in pom.xml
-        // - see https://docs.sonarqube.org/latest/analysis/scan/sonarscanner-for-maven/
         dockerBroker.invokeAction(
           env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
-          globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-          globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-          globals.get("MAVEN_CONTAINER_OPTS"),
-          "/usr/local/bin/mvn-entrypoint.sh mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar " +
-          "-Dsonar.host.url=${globals.get('SONARQUBE_INTERNAL_ROOT_URL')} -Dsonar.scm.disabled=true " +
-          "-Dsonar.projectKey=${globals.get('SONARQUBE_PROJECT_ID')} -Dsonar.login=${accessToken} " +
-          "-Dsonar.dependencyCheck.xmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-          "/target/owasp-dep-check-report/dependency-check-report.xml " +
-          "-Dsonar.dependencyCheck.jsonReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-          "/target/owasp-dep-check-report/dependency-check-report.json " +
-          "-Dsonar.dependencyCheck.htmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-          "/target/owasp-dep-check-report/dependency-check-report.html"
+          globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
+          globals.get("SONAR_SCANNER_IMAGE_NAME"), globals.get("SONAR_SCANNER_IMAGE_TAG"),
+          globals.get("SONAR_SCANNER_CONTAINER_OPTS"),
+          mainSonarQubeCmd
         )
       } else {
-        if (env.gitlabMergeRequestId && env.gitlabSourceBranch && env.gitlabTargetBranch) {
+        if (env.gitlabMergeRequestIid && env.gitlabSourceBranch && env.gitlabTargetBranch) {
           dockerBroker.invokeAction(
             env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
-            globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-            globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-            globals.get("MAVEN_CONTAINER_OPTS"),
-            "/usr/local/bin/mvn-entrypoint.sh mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar " +
-            "-Dsonar.host.url=${globals.get('SONARQUBE_INTERNAL_ROOT_URL')} -Dsonar.scm.disabled=true " +
-            "-Dsonar.projectKey=${globals.get('SONARQUBE_PROJECT_ID')} -Dsonar.login=${accessToken} " +
-            "-Dsonar.dependencyCheck.xmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-            "/target/owasp-dep-check-report/dependency-check-report.xml " +
-            "-Dsonar.dependencyCheck.jsonReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-            "/target/owasp-dep-check-report/dependency-check-report.json " +
-            "-Dsonar.dependencyCheck.htmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-            "/target/owasp-dep-check-report/dependency-check-report.html " +
-            "-Dsonar.pullrequest.key=${gitlabMergeRequestId} " +
+            globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
+            globals.get("SONAR_SCANNER_IMAGE_NAME"), globals.get("SONAR_SCANNER_IMAGE_TAG"),
+            globals.get("SONAR_SCANNER_CONTAINER_OPTS"),
+            mainSonarQubeCmd + " " +
+            "-Dsonar.pullrequest.key=${gitlabMergeRequestIid} " +
             "-Dsonar.pullrequest.branch=${gitlabSourceBranch} " +
             "-Dsonar.pullrequest.base=${gitlabTargetBranch}"
           )
         } else {
           dockerBroker.invokeAction(
             env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
-            globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-            globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-            globals.get("MAVEN_CONTAINER_OPTS"),
-            "/usr/local/bin/mvn-entrypoint.sh mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar " +
-            "-Dsonar.host.url=${globals.get('SONARQUBE_INTERNAL_ROOT_URL')} -Dsonar.scm.disabled=true " +
-            "-Dsonar.projectKey=${globals.get('SONARQUBE_PROJECT_ID')} -Dsonar.login=${accessToken} " +
-            "-Dsonar.dependencyCheck.xmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-            "/target/owasp-dep-check-report/dependency-check-report.xml " +
-            "-Dsonar.dependencyCheck.jsonReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-            "/target/owasp-dep-check-report/dependency-check-report.json " +
-            "-Dsonar.dependencyCheck.htmlReportPath=${globals.get('MAVEN_WORKSPACE_CONTAINER_PATH')}" +
-            "/target/owasp-dep-check-report/dependency-check-report.html " +
+            globals.get("DOCKER_PUBLIC_REGISTRY_URL"), globals.get("DOCKER_PUBLIC_REGISTRY_CRED_ID"),
+            globals.get("SONAR_SCANNER_IMAGE_NAME"), globals.get("SONAR_SCANNER_IMAGE_TAG"),
+            globals.get("SONAR_SCANNER_CONTAINER_OPTS"),
+            mainSonarQubeCmd + " " +
             "-Dsonar.branch.name=${(env.gitlabBranch) ? env.gitlabBranch.toString() : globals.get("MANUAL_JOB_INVOCATION_BRANCH")}"
           )
         }
@@ -979,6 +1044,21 @@ void callSonarQubeScanLogic() {
       globals.get("SONARQUBE_CRED_ID"),
       globals.get("SONARQUBE_QUERY_INTERVAL")
     )
+  }
+}
+
+/**
+* Invokes the Veracode Scanning Logic.
+*/
+void callVeracodeScanLogic() {
+  zip(dir: "${globals.get('JENKINS_CHILD_WORKSPACE_CONTAINER_PATH')}/src", glob: "", zipFile: "target/frontend-example.zip")
+
+  if (env.gitlabTargetBranch && gitRunner.isValidRef(env.gitlabTargetBranch.toString(), globals.get("PRODUCTION_BRANCH_REGEX"))) {
+    // run the more comprehensive policy scanner
+    veracodeScanner.runPolicy(globals.get("VERACODE_CRED_ID"), globals.get("VERACODE_SCAN_OPTIONS"))
+  } else {
+    // run the pipeline scanner with less overhead
+    veracodeScanner.runPipeline(globals.get("VERACODE_CRED_ID"), globals.get("VERACODE_SCAN_OPTIONS"))
   }
 }
 
@@ -1044,13 +1124,10 @@ void callVerAndClPushLogic() {
 void callBuildArtifPushLogic() {
   echo "Pushing build artifacts..."
 
-  dockerBroker.invokeAction(
+  dockerBroker.pushImage(
     env.CLOUD_HOST_IP.toString(), env.CLOUD_HOST_CREDS_ID.toString(),
     globals.get("DOCKER_PRIVATE_REGISTRY_URL"), globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
-    globals.get("MAVEN_IMAGE_NAME"), globals.get("MAVEN_IMAGE_TAG"),
-    globals.get("MAVEN_CONTAINER_OPTS"), "/usr/local/bin/mvn-entrypoint.sh mvn deploy -DskipTests " +
-    "-DaltSnapshotDeploymentRepository=nexus::default::${globals.get('MAVEN_INTERNAL_SNAPSHOT_REPO_URL')} " +
-    "-DaltReleaseDeploymentRepository=nexus::default::${globals.get('MAVEN_INTERNAL_RELEASE_REPO_URL')}"
+    globals.get("DOCKER_IMAGE_NAME"), "latest"
   )
 
   dockerBroker.pushImage(
@@ -1064,18 +1141,72 @@ void callBuildArtifPushLogic() {
 * Invokes the Application Deployment Stage Logic.
 */
 void callAppDeploymentLogic() {
+  String dockerStackFileName = ""
+
+  if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX")))
+      || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX")))) {
+    dockerStackFileName = "docker-stack-dev.yml"
+  } else if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("TEST_BRANCH_REGEX")))
+      || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("TEST_BRANCH_REGEX")))) {
+    dockerStackFileName = "docker-stack-test.yml"
+  } else if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("PRODUCTION_BRANCH_REGEX")))
+      || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("PRODUCTION_BRANCH_REGEX")))) {
+    dockerStackFileName = "docker-stack-prod.yml"
+  }
+
+  String dockerStackContents = gitRunner.getFileContents(
+    globals.get("GITLAB_INTERNAL_ROOT_URL"),
+    [
+      "gitServerCredentialsId" : globals.get("GITLAB_USER_CRED_ID"),
+      "gitServerApiTokenCredId": globals.get("GITLAB_API_CURL_CRED_ID")
+    ],
+    [
+      "userFullName"    : globals.get("CICD_ADMIN_NAME"),
+      "userEmailAddress": globals.get("CICD_ADMIN_EMAIL")
+    ],
+    globals.get("GITLAB_CONFIG_FILES_INTERNAL_PATH_URL"),
+    "/Deployment",
+    dockerStackFileName,
+    "master"
+  )
+
   if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX")))
       || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("DEVELOPMENT_BRANCH_REGEX")))) {
     echo "Deploying application to development environment..."
-    // TODO: implement this
+    // no need to change the tag in the Docker stack file since it already is set to latest
   } else if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("TEST_BRANCH_REGEX")))
       || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("TEST_BRANCH_REGEX")))) {
     echo "Deploying application to test environment..."
-    // TODO: implement this
+
+    dockerStackContents =
+      dockerStackContents.replaceAll("${globals.get('DOCKER_IMAGE_NAME')}:latest",
+        "${globals.get('DOCKER_IMAGE_NAME')}:${globals.get('CURRENT_VERSION')}")
   } else if ((env.gitlabBranch && gitRunner.isValidRef(env.gitlabBranch.toString(), globals.get("PRODUCTION_BRANCH_REGEX")))
       || (env.chosenBranch && gitRunner.isValidRef(env.chosenBranch.toString(), globals.get("PRODUCTION_BRANCH_REGEX")))) {
     echo "Deploying application to production environment..."
-    // TODO: implement this
+
+    dockerStackContents =
+      dockerStackContents.replaceAll("${globals.get('DOCKER_IMAGE_NAME')}:latest",
+        "${globals.get('DOCKER_IMAGE_NAME')}:${globals.get('NEW_VERSION')}")
+  }
+
+  jobDataManager.createFileFromString(
+    globals.get("JENKINS_CHILD_WORKSPACE_CONTAINER_PATH"),
+    dockerStackFileName,
+    dockerStackContents
+  )
+
+  withCredentials([usernamePassword(credentialsId: globals.get("DOCKER_PRIVATE_REGISTRY_CRED_ID"),
+      passwordVariable: "password", usernameVariable: "username")]) {
+    sshPublisher(
+      failOnError: true, publishers: [sshPublisherDesc(configName: "example-config",
+      transfers: [sshTransfer(cleanRemote: true, excludes: "",
+      execCommand: "docker login -u " + username + " -p " + password + " https://${globals.get('DOCKER_PRIVATE_REGISTRY_FQDN_AND_PORT')} " +
+      "&& docker stack deploy --with-registry-auth --compose-file \"/tmp/${JOB_NAME}_${BUILD_NUMBER}/${dockerStackFileName}\" examples",
+      execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: "[, ]+",
+      remoteDirectory: "${JOB_NAME}_${BUILD_NUMBER}", remoteDirectorySDF: false, removePrefix: "",
+      sourceFiles: dockerStackFileName)], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: true)]
+    )
   }
 }
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1323,12 +1454,12 @@ lock(env.JOB_NAME.toString()) {
               stage("Veracode Scan") {
                 gitlabCommitStatus(env.STAGE_NAME.toString()) {
                   when(globals.get("STAGES_TO_SKIP").contains(env.STAGE_NAME.toString()) == false
-                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "MERGE"
-                      || env.gitlabActionType.toString() == "NOTE")) || (env.gitlabActionType == null && env.chosenBranch
-                      && env.deployOnly.toBoolean() == false))) {
+                      && ((env.gitlabActionType && (env.gitlabActionType.toString() == "PUSH"
+                      || env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE"))
+                      || (env.gitlabActionType == null && env.chosenBranch && env.deployOnly.toBoolean() == false))) {
                     retry(globals.get("VERACODE_SCANNING_STAGE_RETRY_COUNT")) {
                       echo "Running Veracode scan..."
-                      veracodeScanner.invoke(globals.get("VERACODE_CRED_ID"), globals.get("VERACODE_SCAN_OPTIONS"))
+                      callVeracodeScanLogic()
                     }
                   }
                 }
@@ -1388,7 +1519,6 @@ lock(env.JOB_NAME.toString()) {
           }
         }
       } catch (Exception exception) {
-        // print exception details
         println(exception.toString())
         println(exception.getMessage())
 

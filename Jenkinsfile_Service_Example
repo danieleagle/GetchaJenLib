@@ -28,8 +28,8 @@ globals.set(
 // a user can enter a special comment in GitLab to make Jenkins retry the job. The comments applicable to different users
 // are below.
 //
-// Regular User:                          Jenkins Retry, Skip Phases - none
-// Stage Skip User (those on below list): Jenkins Retry, Skip Phases - stage name,stage name, stage name
+// Regular User:                          Jenkins Retry, Skip Stages - none
+// Stage Skip User (those on below list): Jenkins Retry, Skip Stages - stage name, stage name, stage name
 //
 globals.set("STAGE_SKIP_MERG_REQ_USERNAMES", [ "root", "john" ])
 

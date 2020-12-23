@@ -743,7 +743,7 @@ void callCalcVerLogic() {
     sh "git checkout ${gitlabBranch}"
   } else if ((env.gitlabActionType.toString() == "MERGE" || env.gitlabActionType.toString() == "NOTE")
       && env.gitlabTargetBranch) {
-    sh "git checkout -b merge-req-${gitlabMergeRequestIid}"
+    sh "git checkout -b mergeReq${gitlabMergeRequestIid}"
   } else {
     sh "git checkout ${globals.get('MANUAL_JOB_INVOCATION_BRANCH')}"
   }
